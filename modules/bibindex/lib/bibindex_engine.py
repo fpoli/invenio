@@ -806,8 +806,10 @@ class AbstractIndexTable(object):
             else:
                 value[word] = {recID: sign}
         except Exception as e:
-            write_message("Error: Cannot put word %s with sign %d for recID %s." % \
-                          (word, sign, recID))
+            write_message(
+                "Error: Cannot put word %s with sign %d for recID %s (%s)."
+                % (word, sign, recID, repr(e))
+            )
 
     def load_old_recIDs(self, word):
         """Load existing hitlist for the word from the database index files."""
@@ -1625,9 +1627,11 @@ class WordTable(AbstractIndexTable):
                 value[word][recID] = sign
             else:
                 value[word] = {recID: sign}
-        except:
-            write_message("Error: Cannot put word %s with sign %d for recID %s." % (word, sign, recID))
-
+        except Exception as e:
+            write_message(
+                "Error: Cannot put word %s with sign %d for recID %s (%s)."
+                % (word, sign, recID, repr(e))
+            )
 
     def del_recIDs(self, recIDs):
         """Fetches records which id in the recIDs range list and adds

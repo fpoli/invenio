@@ -63,6 +63,7 @@ INSERT INTO field VALUES (40,'refers to excluding self cites','referstoexcluding
 INSERT INTO field VALUES (41,'cited by excluding self cites','citedbyexcludingselfcites');
 INSERT INTO field VALUES (42,'cataloguer nickname','cataloguer');
 INSERT INTO field VALUES (43,'file name','filename');
+INSERT INTO field VALUES (44,'country','country');
 
 INSERT INTO field_tag VALUES (10,11,100);
 INSERT INTO field_tag VALUES (11,14,100);
@@ -276,7 +277,13 @@ INSERT INTO field_tag VALUES (39,218,10);
 INSERT INTO field_tag VALUES (39,219,10);
 INSERT INTO field_tag VALUES (39,220,10);
 INSERT INTO field_tag VALUES (39,221,10);
-
+-- country field
+INSERT INTO field_tag VALUES (44,133,10);
+INSERT INTO field_tag VALUES (44,134,10);
+INSERT INTO field_tag VALUES (44,222,10);
+INSERT INTO field_tag VALUES (44,223,10);
+INSERT INTO field_tag VALUES (44,224,10);
+INSERT INTO field_tag VALUES (44,225,10);
 
 
 INSERT INTO format (id,name,code,description,content_type,visibility) VALUES (1,'HTML brief','hb', 'HTML brief output format, used for search results pages.', 'text/html', 1);
@@ -532,7 +539,11 @@ INSERT INTO tag VALUES (218,'journal control','130__0');
 INSERT INTO tag VALUES (219,'subject control','150__0');
 INSERT INTO tag VALUES (220,'additional institute control', '260__0');
 INSERT INTO tag VALUES (221,'additional author control', '700__0');
-
+--
+INSERT INTO tag VALUES (222,'SPIRES name', '110__u');
+INSERT INTO tag VALUES (223,'country name', '371__d');
+INSERT INTO tag VALUES (224,'country code', '371__g');
+INSERT INTO tag VALUES (225,'extra', '371__x');
 
 
 
@@ -564,6 +575,7 @@ INSERT INTO idxINDEX VALUES (25,'filetype','This index contains extensions of fi
 INSERT INTO idxINDEX VALUES (26,'miscellaneous','This index contains words/phrases from miscellaneous fields','0000-00-00 00:00:00', '', 'native','','No','No','No', 'BibIndexDefaultTokenizer');
 INSERT INTO idxINDEX VALUES (27,'doi','This index contains words/phrases from doi fields','0000-00-00 00:00:00', '', 'native','','No','No','No', 'BibIndexDOITokenizer');
 INSERT INTO idxINDEX VALUES (28,'filename','This index contains file names of files connected to records.','0000-00-00 00:00:00', '', 'native', '','No','No','No', 'BibIndexFilenameTokenizer');
+INSERT INTO idxINDEX VALUES (29,'country','This index contains country names of the affiliated institutes of the authors.','0000-00-00 00:00:00', '', 'native', '','No','No','No', 'BibIndexCountryTokenizer');
 
 
 INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (1,1);
@@ -594,6 +606,7 @@ INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (25,38);
 INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (26,39);
 INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (27,18);
 INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (28,43);
+INSERT INTO idxINDEX_field (id_idxINDEX, id_field) VALUES (29,44);
 
 
 INSERT INTO idxINDEX_idxINDEX (id_virtual, id_normal) VALUES (1, 2);
