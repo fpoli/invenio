@@ -63,6 +63,8 @@ INSERT INTO field VALUES (40,'refers to excluding self cites','referstoexcluding
 INSERT INTO field VALUES (41,'cited by excluding self cites','citedbyexcludingselfcites');
 INSERT INTO field VALUES (42,'cataloguer nickname','cataloguer');
 INSERT INTO field VALUES (43,'file name','filename');
+INSERT INTO field VALUES (44,'note','note');
+INSERT INTO field VALUES (45,'address','address');
 
 INSERT INTO field_tag VALUES (10,11,100);
 INSERT INTO field_tag VALUES (11,14,100);
@@ -276,7 +278,12 @@ INSERT INTO field_tag VALUES (39,218,10);
 INSERT INTO field_tag VALUES (39,219,10);
 INSERT INTO field_tag VALUES (39,220,10);
 INSERT INTO field_tag VALUES (39,221,10);
-
+-- address fields
+INSERT INTO field_tag VALUES (44,222,10);
+INSERT INTO field_tag VALUES (45,223,10);
+INSERT INTO field_tag VALUES (45,224,10);
+INSERT INTO field_tag VALUES (45,225,10);
+INSERT INTO field_tag VALUES (45,149,10);
 
 
 INSERT INTO format (id,name,code,description,content_type,visibility) VALUES (1,'HTML brief','hb', 'HTML brief output format, used for search results pages.', 'text/html', 1);
@@ -532,9 +539,11 @@ INSERT INTO tag VALUES (218,'journal control','130__0');
 INSERT INTO tag VALUES (219,'subject control','150__0');
 INSERT INTO tag VALUES (220,'additional institute control', '260__0');
 INSERT INTO tag VALUES (221,'additional author control', '700__0');
-
-
-
+--
+INSERT INTO tag VALUES (222,'note', '500__a');
+INSERT INTO tag VALUES (223,'address', '371__%');
+INSERT INTO tag VALUES (224,'110__(any)', '110__%');
+INSERT INTO tag VALUES (225,'410__g', '410__g');
 
 INSERT INTO idxINDEX VALUES (1,'global','This index contains words/phrases from global fields.','0000-00-00 00:00:00', '', 'native', 'INDEX-SYNONYM-TITLE,exact','No','No','No','BibIndexDefaultTokenizer');
 INSERT INTO idxINDEX VALUES (2,'collection','This index contains words/phrases from collection identifiers fields.','0000-00-00 00:00:00', '', 'native', '','No','No','No', 'BibIndexDefaultTokenizer');

@@ -5038,5 +5038,6 @@ INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2014_01_24_seqSTORE_larg
 INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2014_01_22_queue_table_virtual_index',NOW());
 INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2013_12_05_new_index_doi',NOW());
 INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2014_03_13_new_index_filename',NOW());
-
+INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2014_06_06_new_field_note',NOW());
+INSERT INTO upgrade (upgrade, applied) VALUES ('invenio_2014_06_10_new_field_address',NOW());
 -- end of file
