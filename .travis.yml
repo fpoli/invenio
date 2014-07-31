@@ -24,8 +24,8 @@ python:
   - "2.6"
 
 install:
-  - wget https://get.docker.io/builds/Linux/x86_64/docker-latest -O /usr/local/bin/docker
-  - $ chmod +x /usr/local/bin/docker
+  - sudo wget https://get.docker.io/builds/Linux/x86_64/docker-latest -O /usr/local/bin/docker
+  - sudo chmod +x /usr/local/bin/docker
   - sudo docker -d &
   - sudo docker run ubuntu:14.04 /bin/echo Hello world
   - sudo apt-get update
