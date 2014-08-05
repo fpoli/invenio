@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 ##
 ## This file is part of Invenio.
-## Copyright (C) 2010, 2011, 2012 CERN.
+## Copyright (C) 2010, 2011, 2012, 2014 CERN.
 ##
 ## Invenio is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as
@@ -37,11 +37,12 @@ from invenio.bibknowledge import (
 )
 from invenio.intbitset import intbitset
 from invenio.bibindex_engine_config import CFG_BIBINDEX_INDEX_TABLE_TYPE
-from invenio.bibindex_engine_washer import remove_stopwords
+from invenio.bibindex_engine_washer import remove_stopwords as do_remove_stopwords
 from invenio.config import CFG_WEBSEARCH_INSTITUTION_COLLECTIONS
 
 
 class BibIndexCountryTokenizer(BibIndexMultiFieldTokenizer):
+
     """This tokenizer returns the countries of the institutions affiliated
        with the authors of the publication given by recID.
 
@@ -186,13 +187,13 @@ class BibIndexCountryTokenizer(BibIndexMultiFieldTokenizer):
         tokens = []
         for phrase in phrase_tokens:
             # If phrase is a country code be careful, because codes like IT
-            # may be removed by remove_stopwords()
+            # may be removed by do_remove_stopwords()
             if kb_mapping_exists(self.kb_country_codes, phrase):
                 tokens.append(phrase)
             else:
                 word_list = self.re_words.findall(phrase)
                 for word in word_list:
-                    word = remove_stopwords(word, self.remove_stopwords)
+                    word = do_remove_stopwords(word, self.remove_stopwords)
                     if word:
                         tokens.append(word)
 
@@ -213,10 +214,10 @@ class BibIndexCountryTokenizer(BibIndexMultiFieldTokenizer):
             word_list = self.re_words.findall(phrase)
             last_word = ""
             for word in word_list:
-                word = remove_stopwords(word, self.remove_stopwords)
+                word = do_remove_stopwords(word, self.remove_stopwords)
                 if word:
                     if last_word:
-                        tokens.append(last_word+" "+word)
+                        tokens.append(last_word + " " + word)
                     last_word = word
 
         # Remove duplicates

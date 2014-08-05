@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 ##
 ## This file is part of Invenio.
-## Copyright (C) 2010, 2011, 2012 CERN.
+## Copyright (C) 2010, 2011, 2012, 2014 CERN.
 ##
 ## Invenio is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as
@@ -50,8 +50,8 @@ else:
     CFG_JOURNAL_PUBINFO_JOURNAL_VOLUME_FORM = "909C4p 909C4v"
 
 
-
 class BibIndexJournalTokenizer(BibIndexMultiFieldTokenizer):
+
     """
         Tokenizer for journal index.
         Returns joined title/volume/year/page as a word from journal tag.
@@ -61,13 +61,12 @@ class BibIndexJournalTokenizer(BibIndexMultiFieldTokenizer):
         take a look on BibIndexJournalTokenizer base class.
     """
 
-    def __init__(self, stemming_language = None, remove_stopwords = False, remove_html_markup = False, remove_latex_markup = False):
+    def __init__(self, stemming_language=None, remove_stopwords=False, remove_html_markup=False, remove_latex_markup=False):
         self.tag = CFG_JOURNAL_TAG
         self.nonmarc_tag = 'journal_info'
         self.journal_pubinfo_standard_form = CFG_JOURNAL_PUBINFO_STANDARD_FORM
         self.journal_pubinfo_standard_form_regexp_check = CFG_JOURNAL_PUBINFO_STANDARD_FORM_REGEXP_CHECK
         self.journal_pubinfo_journal_volume_form = CFG_JOURNAL_PUBINFO_JOURNAL_VOLUME_FORM
-
 
     def tokenize(self, recID):
         """
@@ -89,13 +88,12 @@ class BibIndexJournalTokenizer(BibIndexMultiFieldTokenizer):
 
         def replace_tags(tags_values, pubinfo):
             for tag, val in tags_values.items():
-                    pubinfo = pubinfo.replace(tag, val)
+                pubinfo = pubinfo.replace(tag, val)
             if self.tag[:-1] in pubinfo:
                 # some subfield was missing, do nothing
                 return None
             else:
                 return pubinfo
-
 
         # construct standard format:
         lwords = []
@@ -104,12 +102,13 @@ class BibIndexJournalTokenizer(BibIndexMultiFieldTokenizer):
             for tag, val in dpubinfo.items():
                 lwords.append(val)
                 if tag.endswith('c') and '-' in val:
-                        val = val.split('-')[0]
-                        lwords.append(val)
+                    val = val.split('-')[0]
+                    lwords.append(val)
 
             # Store journal and volume for searches without a page
             # Store J.Phys.,B50
-            word = replace_tags(dpubinfo, self.journal_pubinfo_journal_volume_form)
+            word = replace_tags(
+                dpubinfo, self.journal_pubinfo_journal_volume_form)
             if word is not None:
                 lwords.append(word)
             # Store full info for searches with all info
