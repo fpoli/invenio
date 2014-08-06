@@ -900,10 +900,13 @@ def cli_cmd_load_demo_records(conf):
                 "%s/bin/bibdocfile --textify --all" % CFG_PREFIX,
                 "%s/bin/bibindex -u admin -w collection" % CFG_PREFIX,
                 "%s/bin/bibindex 2" % CFG_PREFIX,
+                # Requires the collection index updated
                 "%s/bin/webcoll -u admin" % CFG_PREFIX,
                 "%s/bin/webcoll 3" % CFG_PREFIX,
+                # Requires webcoll executed
                 "%s/bin/bibindex -u admin" % CFG_PREFIX,
                 "%s/bin/bibindex 4" % CFG_PREFIX,
+                # Requires regular indexes updated
                 "%s/bin/bibindex -u admin -l" % CFG_PREFIX,
                 "%s/bin/bibindex 5" % CFG_PREFIX,
                 "%s/bin/bibreformat -u admin -o HB" % CFG_PREFIX,
@@ -915,8 +918,17 @@ def cli_cmd_load_demo_records(conf):
                 "%s/bin/oairepositoryupdater -u admin" % CFG_PREFIX,
                 "%s/bin/oairepositoryupdater 9" % CFG_PREFIX,
                 "%s/bin/bibupload 10" % CFG_PREFIX,
+                # Requires indexes updated
                 "%s/bin/bibauthorid -u admin --update-personid" % CFG_PREFIX,
-                "%s/bin/bibauthorid 11" % CFG_PREFIX]:
+                "%s/bin/bibauthorid 11" % CFG_PREFIX,
+                # These indexes take the canonical author name from bibauthorid
+                # Requires bibauthorid executed
+                # Requires to update virtual indexes later
+                "%s/bin/bibindex -u admin -w canonicalauthor,parentcanonicalauthor -R" % CFG_PREFIX,
+                "%s/bin/bibindex 12" % CFG_PREFIX,
+                "%s/bin/bibindex -u admin -l" % CFG_PREFIX,
+                "%s/bin/bibindex 13" % CFG_PREFIX,
+                ]:
         if os.system(cmd):
             print "ERROR: failed execution of", cmd
             sys.exit(1)
