@@ -1275,8 +1275,11 @@ class BibIndexFindingAffectedIndexes(InvenioTestCase):
             [[1, 20]]
         )
         self.assertEqual(
-            sorted(
-                ['miscellaneous', 'fulltext', 'caption', 'journal', 'reportnumber', 'year']),
+            sorted([
+                'miscellaneous', 'fulltext', 'caption', 'journal',
+                'reportnumber', 'year', 'exactauthor', 'exactfirstauthor',
+                'firstauthor'
+            ]),
             sorted(records_for_indexes.keys())
         )
 

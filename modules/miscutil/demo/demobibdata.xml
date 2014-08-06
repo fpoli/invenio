@@ -26282,4 +26282,56 @@ Only the mountain and I.
     </datafield>
   </record>
 
+  <!----------------------------
+    ARTICLES records used to test 786__w tag
+  ----------------------------->
+
+  <record>
+    <datafield tag="245" ind1=" " ind2=" ">
+      <subfield code="a">This is a demo record that is used by record 10</subfield>
+    </datafield>
+    <datafield tag="786" ind1=" " ind2=" ">
+      <subfield code="w">10</subfield>
+    </datafield>
+    <datafield tag="980" ind1=" " ind2=" ">
+      <subfield code="a">ARTICLE</subfield>
+    </datafield>
+  </record>
+
+  <record>
+    <datafield tag="245" ind1=" " ind2=" ">
+      <subfield code="a">This is a demo record used by record 20</subfield>
+    </datafield>
+    <datafield tag="786" ind1=" " ind2=" ">
+      <subfield code="w">20</subfield>
+    </datafield>
+    <datafield tag="980" ind1=" " ind2=" ">
+      <subfield code="a">ARTICLE</subfield>
+    </datafield>
+  </record>
+
+  <record>
+    <datafield tag="245" ind1=" " ind2=" ">
+      <subfield code="a">This is a demo record used by record 30</subfield>
+    </datafield>
+    <datafield tag="786" ind1=" " ind2=" ">
+      <subfield code="w">30</subfield>
+    </datafield>
+    <datafield tag="980" ind1=" " ind2=" ">
+      <subfield code="a">ARTICLE</subfield>
+    </datafield>
+  </record>
+
+  <record>
+    <datafield tag="245" ind1=" " ind2=" ">
+      <subfield code="a">This is a demo record used by record 40</subfield>
+    </datafield>
+    <datafield tag="786" ind1=" " ind2=" ">
+      <subfield code="w">40</subfield>
+    </datafield>
+    <datafield tag="980" ind1=" " ind2=" ">
+      <subfield code="a">ARTICLE</subfield>
+    </datafield>
+  </record>
+
 </collection>
