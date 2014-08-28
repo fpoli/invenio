@@ -58,4 +58,3 @@ script:
     # Tests
     - nosetests -v /opt/invenio/lib/python/invenio/*_unit_tests.py
     - nosetests -v /opt/invenio/lib/python/invenio/*_regression_tests.py
-
