@@ -24,7 +24,7 @@ from rply import ParserGenerator, LexerGenerator
 from rply import Token  # pylint: disable=W0611
 
 
-from invenio.search_engine_spires_ast import (KeywordOp, AndOp,
+from invenio.search_engine_spires_ast import (KeywordOp, AndOp, OrOp, NotOp,
                                               Keyword, SingleQuotedValue,
                                               DoubleQuotedValue, Value,
                                               RegexValue, RangeOp)
@@ -83,11 +83,20 @@ def generate_parser(lexer, cache_id):
 
     @pg.production("query : simple_query OR query")
     @pg.production("query : simple_query | query")
+    def query3(p):  # pylint: disable=W0612
+        return OrOp(p[0], p[2])
+
     @pg.production("query : NOT query")
     @pg.production("query : - query")
+    def query4(p):  # pylint: disable=W0612
+        return NotOp(p[1])
+
     @pg.production("query : simple_query query")
+    def query5(p):  # pylint: disable=W0612
+        return AndOp(p[0], p[1])
+
     @pg.production("query : simple_query")
-    def query(p):  # pylint: disable=W0612
+    def query6(p):  # pylint: disable=W0612
         return p[0]
 
     @pg.production("simple_query : WORD COLON keyword_value")
