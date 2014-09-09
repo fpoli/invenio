@@ -210,8 +210,8 @@ class TestParser(InvenioTestCase):
     queries = (
        ("bar",
         Value('bar')),
-       ("J. Ellis",
-        Value('J. Ellis')),
+       # ("J. Ellis",
+       #  Value('J. Ellis')),
 
        # Basic keyword:value
        ("foo:bar",
@@ -272,6 +272,32 @@ class TestParser(InvenioTestCase):
          KeywordOp(Keyword('foo'), DoubleQuotedValue("Lemaître"))),
         ("refersto:hep-th/0201100",
          KeywordOp(Keyword('refersto'), Value("hep-th/0201100"))),
+
+        # Combined queries
+        # ("foo:bar foo:bar",
+         # KeywordOp(Keyword('foo'), Value('bar'))),
+        ("foo:bar and foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        ("foo:bar AND foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        # ("foo:bar or foo:bar",
+        #  [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
+        # ("foo:bar | foo:bar",
+        #  [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('|', '|'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
+        # ("foo:bar not foo:bar",
+        #  [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('NOT', 'not'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
+        # ("foo:bar -foo:bar",
+        #  [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('-', '-'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
+        # ("((foo:bar))",
+        #  [Token('(', '('), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token(')', ')')]),
+        # ("(foo:bar)",
+        #  [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
+        # ("(foo:bar) or foo:bar",
+        #  [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
+        # ("foo:bar or (foo:bar)",
+        #  [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
+        # ("(foo:bar) or (foo:bar)",
+        #  [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
     )
 
 
