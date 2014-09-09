@@ -27,6 +27,13 @@ from invenio.testutils import (make_test_suite,
 from invenio.search_engine_spires_parser import (parseQuery,
                                                  lexQuery,
                                                  Token)
+from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
+                                              NotOp, Keyword, Value,
+                                              SingleQuotedValue,
+                                              DoubleQuotedValue,
+                                              RegexValue, RangeOp)
+from invenio.search_engine_spires_walking import TreePrinter
+from rply import ParsingError
 
 
 @nottest
@@ -40,9 +47,16 @@ def generate_lexer_test(query, expected):
 @nottest
 def generate_parser_test(query, expected):
     def func(self):
-        output = list(parseQuery(query))
-        print output
-        self.assertEqual(output, expected)
+        try:
+            tree = parseQuery(query)
+        except ParsingError as e:
+            print 'Source pos', e.getsourcepos()
+            raise
+        else:
+            printer = TreePrinter()
+            print 'tree', tree.accept(printer)
+            print 'expected', expected.accept(printer)
+            self.assertEqual(tree, expected)
     return func
 
 
@@ -65,97 +79,95 @@ class TestLexer(InvenioTestCase):
     queries = (
         # Basic keyword:value
         ("foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo: bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("999: bar",
-         [Token('WORD', '999'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', '999'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("999C5: bar",
-         [Token('WORD', '999C5'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', '999C5'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("999__u: bar",
-         [Token('WORD', '999__u'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', '999__u'), Token('COLON', ':'), Token('WORD', 'bar')]),
 
         # Quoted strings
         ("foo: 'bar'",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('SIMPLE_QUOTED_STRING', "'bar'")]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('SINGLE_QUOTED_STRING', "'bar'")]),
         ("foo: \"bar\"",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('DOUBLE_QUOTED_STRING', '"bar"')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"bar"')]),
         ("foo: /bar/",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('RE_STRING', '/bar/')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('REGEX_STRING', '/bar/')]),
         ("foo: \"'bar'\"",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('DOUBLE_QUOTED_STRING', '"\'bar\'"')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"\'bar\'"')]),
         ('author:"Ellis, J"',
-         [Token('WORD', 'author'), Token(':', ':'), Token('DOUBLE_QUOTED_STRING', '"Ellis, J"')]),
+         [Token('WORD', 'author'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"Ellis, J"')]),
 
         # Date Range queries
         ("year: 2000->2012",
-         [Token('WORD', 'year'), Token(':', ':'), Token('WORD', '2000'), Token('->', '->'), Token('WORD', '2012')]),
+         [Token('WORD', 'year'), Token('COLON', ':'), Token('WORD', '2000'), Token('->', '->'), Token('WORD', '2012')]),
         ("year: 2000-10->2012-09",
-         [Token('WORD', 'year'), Token(':', ':'), Token('WORD', '2000'),
+         [Token('WORD', 'year'), Token('COLON', ':'), Token('WORD', '2000'),
           Token('-', '-'), Token('WORD', '10'), Token('->', '->'),
           Token('WORD', '2012'), Token('-', '-'), Token('WORD', '09')]),
         ("year: 2000-10 -> 2012-09",
-         [Token('WORD', 'year'), Token(':', ':'), Token('WORD', '2000'),
+         [Token('WORD', 'year'), Token('COLON', ':'), Token('WORD', '2000'),
           Token('-', '-'), Token('WORD', '10'), Token('->', '->'),
           Token('WORD', '2012'), Token('-', '-'), Token('WORD', '09')]),
 
         # Star patterns
         ("foo: hello*",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'hello'), Token('*', '*')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'hello'), Token('*', '*')]),
         ("foo: 'hello*'",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('SIMPLE_QUOTED_STRING', "'hello*'")]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('SINGLE_QUOTED_STRING', "'hello*'")]),
         ("foo: \"hello*\"",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('DOUBLE_QUOTED_STRING', '"hello*"')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"hello*"')]),
         ("foo: he*o",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'o')]),
-        ("foo: he*lo",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'lo')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'o')]),
         ("foo: he*lo*",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'lo'), Token('*', '*')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'lo'), Token('*', '*')]),
         ("foo: *hello",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('*', '*'), Token('WORD', 'hello')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('*', '*'), Token('WORD', 'hello')]),
 
         # O'Shea
         ("foo: O'Shea",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'O'), Token('XWORD', "'"), Token('WORD', 'Shea')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'O'), Token('XWORD', "'"), Token('WORD', 'Shea')]),
 
         # Unicode characters
         ("foo: пушкин",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('XWORD', 'пушкин')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('XWORD', 'пушкин')]),
         ("foo: Lemaître",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'Lema'), Token('XWORD', 'î'), Token('WORD', 'tre')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'Lema'), Token('XWORD', 'î'), Token('WORD', 'tre')]),
         ('foo: "Lemaître"',
-         [Token('WORD', 'foo'), Token(':', ':'), Token('DOUBLE_QUOTED_STRING', '"Lemaître"')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"Lemaître"')]),
         ("refersto:hep-th/0201100",
-         [Token('WORD', 'refersto'), Token(':', ':'), Token('WORD', 'hep'),
+         [Token('WORD', 'refersto'), Token('COLON', ':'), Token('WORD', 'hep'),
           Token('-', '-'), Token('WORD', 'th'), Token('XWORD', '/'),
           Token('WORD', '0201100')]),
 
         # Combined queries
         ("foo:bar foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar and foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('AND', 'and'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('AND', 'and'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar AND foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('AND', 'AND'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('AND', 'AND'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar or foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar | foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('|', '|'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('|', '|'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar not foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('NOT', 'not'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('NOT', 'not'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar -foo:bar",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('-', '-'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('-', '-'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("((foo:bar))",
-         [Token('(', '('), Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')'), Token(')', ')')]),
+         [Token('(', '('), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token(')', ')')]),
         ("(foo:bar)",
-         [Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')')]),
+         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
         ("(foo:bar) or foo:bar",
-         [Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar')]),
+         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
         ("foo:bar or (foo:bar)",
-         [Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')')]),
+         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
         ("(foo:bar) or (foo:bar)",
-         [Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token(':', ':'), Token('WORD', 'bar'), Token(')', ')')]),
+         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
 
         # Simple spires syntax
         ("find t quark",
@@ -175,7 +187,7 @@ class TestLexer(InvenioTestCase):
         ("find j phys.rev.,D50,1140",
          [Token('FIND', 'find'), Token('WORD', 'j'), Token('WORD', 'phys'), Token('XWORD', '.'), Token('WORD', 'rev'), Token('XWORD', '.,'), Token('WORD', 'D50'), Token('XWORD', ','), Token('WORD', '1140')]),
         ("find eprint arxiv:1007.5048",
-         [Token('FIND', 'find'), Token('WORD', 'eprint'), Token('WORD', 'arxiv'), Token(':', ':'), Token('WORD', '1007'), Token('XWORD', '.'), Token('WORD', '5048')]),
+         [Token('FIND', 'find'), Token('WORD', 'eprint'), Token('WORD', 'arxiv'), Token('COLON', ':'), Token('WORD', '1007'), Token('XWORD', '.'), Token('WORD', '5048')]),
         ('find fulltext "quark-gluon plasma"',
          [Token('FIND', 'find'), Token('WORD', 'fulltext'), Token('DOUBLE_QUOTED_STRING', '"quark-gluon plasma"')]),
         ('find topcite 200+',
@@ -195,7 +207,72 @@ class TestLexer(InvenioTestCase):
 class TestParser(InvenioTestCase):
     """Test parser functionality"""
 
-    queries = ()
+    queries = (
+       ("bar",
+        Value('bar')),
+       ("J. Ellis",
+        Value('J. Ellis')),
+
+       # Basic keyword:value
+       ("foo:bar",
+        KeywordOp(Keyword('foo'), Value('bar'))),
+       ("foo: bar",
+        KeywordOp(Keyword('foo'), Value('bar'))),
+       ("999: bar",
+        KeywordOp(Keyword('999'), Value('bar'))),
+       ("999C5: bar",
+        KeywordOp(Keyword('999C5'), Value('bar'))),
+       ("999__u: bar",
+        KeywordOp(Keyword('999__u'), Value('bar'))),
+
+        # Quoted strings
+        ("foo: 'bar'",
+        KeywordOp(Keyword('foo'), SingleQuotedValue('bar'))),
+        ("foo: \"bar\"",
+        KeywordOp(Keyword('foo'), DoubleQuotedValue('bar'))),
+        ("foo: /bar/",
+        KeywordOp(Keyword('foo'), RegexValue('bar'))),
+        ("foo: \"'bar'\"",
+        KeywordOp(Keyword('foo'), DoubleQuotedValue("'bar'"))),
+        ('author:"Ellis, J"',
+        KeywordOp(Keyword('author'), DoubleQuotedValue("Ellis, J"))),
+
+        # Date Range queries
+        ("year: 2000->2012",
+        KeywordOp(Keyword('year'), RangeOp(Value('2000'), Value('2012')))),
+        ("year: 2000-10->2012-09",
+        KeywordOp(Keyword('year'), RangeOp(Value('2000-10'), Value('2012-09')))),
+        ("year: 2000-10 -> 2012-09",
+        KeywordOp(Keyword('year'), RangeOp(Value('2000-10'), Value('2012-09')))),
+
+        # Star patterns
+        ("foo: hello*",
+         KeywordOp(Keyword('foo'), Value('hello*'))),
+        ("foo: 'hello*'",
+         KeywordOp(Keyword('foo'), SingleQuotedValue('hello*'))),
+        ("foo: \"hello*\"",
+         KeywordOp(Keyword('foo'), DoubleQuotedValue('hello*'))),
+        ("foo: he*o",
+         KeywordOp(Keyword('foo'), Value('he*o'))),
+        ("foo: he*lo*",
+         KeywordOp(Keyword('foo'), Value('he*lo*'))),
+        ("foo: *hello",
+         KeywordOp(Keyword('foo'), Value('*hello'))),
+
+        # O'Shea
+        ("foo: O'Shea",
+         KeywordOp(Keyword('foo'), Value("O'Shea"))),
+
+        # Unicode characters
+        ("foo: пушкин",
+         KeywordOp(Keyword('foo'), Value("пушкин"))),
+        ("foo: Lemaître",
+         KeywordOp(Keyword('foo'), Value("Lemaître"))),
+        ('foo: "Lemaître"',
+         KeywordOp(Keyword('foo'), DoubleQuotedValue("Lemaître"))),
+        ("refersto:hep-th/0201100",
+         KeywordOp(Keyword('refersto'), Value("hep-th/0201100"))),
+    )
 
 
 TEST_SUITE = make_test_suite(TestLexer, TestParser)

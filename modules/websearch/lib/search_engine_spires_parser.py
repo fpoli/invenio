@@ -19,12 +19,20 @@
 
 import re
 
-from rply import ParserGenerator, LexerGenerator, Token
+from rply import ParserGenerator, LexerGenerator
+# for reimporting
+from rply import Token  # pylint: disable=W0611
+
+
+from invenio.search_engine_spires_ast import (KeywordOp,
+                                              Keyword, SingleQuotedValue,
+                                              DoubleQuotedValue, Value,
+                                              RegexValue, RangeOp)
 
 
 def generate_lexer():
     lg = LexerGenerator()
-    lg.add(":", r":")
+    lg.add("COLON", r":")
     lg.add("FIND", re.compile(r"\b(find|fin|f)\b", re.I))
     lg.add("->", r"->")
     lg.add("(", r"\(")
@@ -43,9 +51,9 @@ def generate_lexer():
     lg.add("NOT", re.compile(r"\bnot\b", re.I))
     # re to match escapes
     # r'"([^\"]|\\.)*([^\\]|\\)"'
-    lg.add("SIMPLE_QUOTED_STRING", r"'[^']*'")
+    lg.add("SINGLE_QUOTED_STRING", r"'[^']*'")
     lg.add("DOUBLE_QUOTED_STRING", r'"[^"]*"')
-    lg.add("RE_STRING", r"/[^/]*/")
+    lg.add("REGEX_STRING", r"/[^/]*/")
     lg.add("*", r"\*")
     # lg.add("NUMBER", r"\b\d+\b")
     # lg.add("WORD", r"[\w\d]+(?=:|\)|\s)")
@@ -58,22 +66,98 @@ def generate_lexer():
     return lg.build()
 
 
-def generate_parser(lexer):
-    pg = ParserGenerator(["NUMBER", "PLUS", "MINUS"],
-            precedence=[("left", ['PLUS', 'MINUS'])], cache_id="myparser")
+def generate_parser(lexer, cache_id):
+    pg = ParserGenerator([rule.name for rule in lexer.rules], cache_id=cache_id)
 
-    @pg.production("main : FIND KEYWORD VALUE")
-    def main(p):
-        print p
+    @pg.production("main : query")
+    def main(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("query : ( query )")
+    @pg.production("query : simple_query AND query")
+    @pg.production("query : simple_query OR query")
+    @pg.production("query : simple_query | query")
+    @pg.production("query : NOT query")
+    @pg.production("query : - query")
+    @pg.production("query : simple_query query")
+    @pg.production("query : simple_query")
+    def query(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("simple_query : WORD COLON keyword_value")
+    def simple_query(p):  # pylint: disable=W0612
+        keyword = Keyword(p[0].value)
+        return KeywordOp(keyword, p[2])
+
+    @pg.production("simple_query : keyword_value")
+    def simple_query(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("keyword_value : SINGLE_QUOTED_STRING")
+    def keyword_value1(p):  # pylint: disable=W0612
+        return SingleQuotedValue(p[0].value[1:-1])
+
+    @pg.production("keyword_value : DOUBLE_QUOTED_STRING")
+    def keyword_value2(p):  # pylint: disable=W0612
+        return DoubleQuotedValue(p[0].value[1:-1])
+
+    @pg.production("keyword_value : REGEX_STRING")
+    def keyword_value3(p):  # pylint: disable=W0612
+        return RegexValue(p[0].value[1:-1])
+
+    @pg.production("keyword_value : range_value -> range_value")
+    def keyword_value4(p):  # pylint: disable=W0612
+        return RangeOp(p[0], p[2])
+
+    @pg.production("keyword_value : value")
+    def keyword_value5(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("value_unit : WORD")
+    @pg.production("value_unit : XWORD")
+    @pg.production("value_unit : -")
+    @pg.production("value_unit : (")
+    @pg.production("value_unit : )")
+    @pg.production("value_unit : *")
+    @pg.production("value_unit : <")
+    @pg.production("value_unit : <=")
+    @pg.production("value_unit : >")
+    @pg.production("value_unit : >=")
+    def value_unit(p):  # pylint: disable=W0612
+        return p[0].value
+
+    @pg.production("range_value : value")
+    def range_value(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("value : value_unit value")
+    def value(p):  # pylint: disable=W0612
+        return Value(p[0] + p[1].value)
+
+    @pg.production("value : value_unit")
+    def value(p):  # pylint: disable=W0612
+        return Value(p[0])
+
+    @pg.error
+    def error_handler(token):  # pylint: disable=W0612
+        raise ValueError("Ran into a %s where it wasn't expected" % token.gettokentype())
+
+    return Parser(lexer, pg.build())
 
 
+class Parser(object):
+    def __init__(self, lexer, parser):
+        self.lexer = lexer
+        self.parser = parser
 
-    return pg.build()
+    def parse(self, query):
+        tokens = list(self.lexer.lex(query))
+        print 'tokens', tokens
+        return self.parser.parse(iter(tokens))
 
 
 LEXER = generate_lexer()
-# PARSER = generate_parser(LEXER)
-PARSER = None
+PARSER = generate_parser(LEXER, cache_id="parser")
 
 
 def lexQuery(query, lexer=LEXER):
@@ -82,4 +166,4 @@ def lexQuery(query, lexer=LEXER):
 
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
-    return parser.parseString(query, parseAll=True)
+    return parser.parse(query)
