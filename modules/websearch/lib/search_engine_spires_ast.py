@@ -20,20 +20,6 @@
 # Abstract classes
 
 
-class Node(object):
-
-    def __init__(self, name, value=None, children=None):
-        if children is None:
-            children = []
-
-        self.name = name
-        self.value = value
-        self.children = children
-
-    def accept(self, visitor):
-        return visitor.visit(self)
-
-
 class BinaryOp(object):
     def __init__(self, left, right):
         self.left = left
@@ -45,6 +31,9 @@ class BinaryOp(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.left == other.left and self.right == other.right
 
+    def __repr__(self):
+        return "%s(%s, %s)" % (self.__class__.__name__, repr(self.left), repr(self.right))
+
 
 class UnaryOp(object):
     def __init__(self, op):
@@ -55,6 +44,23 @@ class UnaryOp(object):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.op == other.op
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.op))
+
+
+class Leaf(object):
+    def __init__(self, value):
+        self.value = value
+
+    def accept(self, visitor):
+        return visitor.visit(self)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.value == other.value
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, repr(self.value))
 
 
 # Concrete classes
@@ -82,20 +88,6 @@ class KeywordOp(BinaryOp):
 
 class SpiresOp(BinaryOp):
     pass
-
-
-class Leaf(object):
-    def __init__(self, value):
-        self.value = value
-
-    def accept(self, visitor):
-        return visitor.visit(self)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.value == other.value
-
-    def __repr__(self):
-        return '%s %s' % (type(self), self.value)
 
 
 class Keyword(Leaf):
