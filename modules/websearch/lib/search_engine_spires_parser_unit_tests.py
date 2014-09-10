@@ -19,6 +19,7 @@
 
 """Unit tests for the search engine query parsers."""
 
+from functools import partial
 
 from invenio.testutils import (make_test_suite,
                                run_test_suite,
@@ -31,8 +32,10 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
                                               DoubleQuotedValue,
-                                              RegexValue, RangeOp)
-from invenio.search_engine_spires_walking import TreePrinter
+                                              RegexValue, RangeOp, SpiresOp)
+from invenio.search_engine_spires_walking import (TreePrinter,
+                                                  SpiresToInvenio,
+                                                  TreeRepr)
 from rply import ParsingError
 
 
@@ -59,6 +62,21 @@ def generate_parser_test(query, expected):
             self.assertEqual(tree, expected)
     return func
 
+@nottest
+def generate_walker_test(query, expected, walker):
+    def func(self):
+        try:
+            tree = parseQuery(query)
+        except ParsingError as e:
+            print 'Source pos', e.getsourcepos()
+            raise
+        else:
+            printer = TreePrinter()
+            new_tree = tree.accept(walker())
+            print 'tree', new_tree.accept(printer)
+            print 'expected', expected.accept(printer)
+            self.assertEqual(new_tree, expected)
+    return func
 
 @nottest
 def generate_tests(generate_test):
@@ -165,7 +183,7 @@ class TestLexer(InvenioTestCase):
         ("(foo:bar) or (foo:bar)",
          [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('_', ' '), Token('OR', 'or'), Token('_', ' '), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
 
-        # Simple spires syntax
+        # Spires syntax
         ("find t quark",
          [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark')]),
         ("find a richter, b",
@@ -304,28 +322,24 @@ class TestParser(InvenioTestCase):
             AndOp(KeywordOp(Keyword('foo'), Value('bar')),
                 AndOp(KeywordOp(Keyword('foo'), Value('bar')),
                     KeywordOp(Keyword('foo'), Value('bar'))))),
+
+        # Spires syntax
+        ("find t quark",
+         SpiresOp(Keyword('t'), Value('quark'))),
+        # ("find t quark a ellis",
+        #  SpiresOp(Keyword('t'), Value('quark'))),
     )
 
-    queries2 = (
-        ("(foo:bar)",
-         KeywordOp(Keyword('foo'), Value('bar'))),
-        # ("foo:bar))foo foo:bar",
-        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
-        # ("find a foo:bar",
-        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
-        # ("(foo:bar)",
-        # KeywordOp(Keyword('foo'), Value('bar'))),
-        # ("find foo bar bar2 and foo:bar",
-        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
-        # ("(foo:bar) AND foo:bar)",
-        # KeywordOp(Keyword('foo'), Value('bar'))),
-        # ("foo:bar(",
-        # KeywordOp(Keyword('foo'), Value('bar'))),
-        # ("foo:bar (hello)",
-        # KeywordOp(Keyword('foo'), Value('bar'))),
-        # ("foo:bar( (hello)",
-        # KeywordOp(Keyword('foo'), Value('bar'))),
+
+@generate_tests(partial(generate_walker_test, walker=SpiresToInvenio))  # pylint: disable=R0903
+class TestSpiresToInvenio(InvenioTestCase):
+    """Test parser functionality"""
+
+    queries = (
+        ("find t quark",
+         KeywordOp(Keyword('t'), Value('quark'))),
     )
+
 
 TEST_SUITE = make_test_suite(TestLexer, TestParser)
 

@@ -27,7 +27,7 @@ from rply import Token  # pylint: disable=W0611
 from invenio.search_engine_spires_ast import (KeywordOp, AndOp, OrOp, NotOp,
                                               Keyword, SingleQuotedValue,
                                               DoubleQuotedValue, Value,
-                                              RegexValue, RangeOp)
+                                              RegexValue, RangeOp, SpiresOp)
 
 
 def generate_lexer():
@@ -81,9 +81,9 @@ def generate_parser(lexer, cache_id):
     def rule(p):  # pylint: disable=W0612
         return p[1]
 
-    @pg.production("main : FIND _ WORD value")
+    @pg.production("main : FIND _ WORD _ value")
     def rule(p):  # pylint: disable=W0612
-        return p[0]
+        return SpiresOp(Keyword(p[2].value), p[4])
 
     @pg.production("query : ( _? query _? )")
     def rule(p):  # pylint: disable=W0612

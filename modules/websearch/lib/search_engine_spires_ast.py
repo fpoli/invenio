@@ -77,8 +77,11 @@ class RangeOp(BinaryOp):
 
 
 class KeywordOp(BinaryOp):
-    def accept(self, visitor):
-        return visitor.visit(self, self.left.accept(visitor), self.right.accept(visitor))
+    pass
+
+
+class SpiresOp(BinaryOp):
+    pass
 
 
 class Leaf(object):
@@ -112,3 +115,5 @@ class DoubleQuotedValue(Leaf):
 
 class RegexValue(Leaf):
     pass
+
+

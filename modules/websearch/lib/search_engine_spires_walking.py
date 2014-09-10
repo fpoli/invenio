@@ -22,7 +22,7 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue,
                                               DoubleQuotedValue,
-                                              RegexValue, RangeOp)
+                                              RegexValue, RangeOp, SpiresOp)
 
 
 # Stores the actual visitor methods
@@ -48,7 +48,7 @@ def make_visitor():
 
     return _visitor
 
-# Function
+
 visitor = make_visitor()
 
 
@@ -92,4 +92,100 @@ class TreePrinter(object):
 
     @visitor(RangeOp)
     def visit(self, node, left, right):
-        return "%s -> %s" % (left, right)
+        return "%s->%s" % (left, right)
+
+    @visitor(SpiresOp)
+    def visit(self, node, left, right):
+        return "find %s %s" % (left, right)
+
+
+visitor = make_visitor()
+
+class TreeRepr(object):
+
+    @visitor(AndOp)
+    def visit(self, node, left, right):
+        return '(%s and %s)' % (left, right)
+
+    @visitor(OrOp)
+    def visit(self, node, left, right):
+        return '(%s or %s)' % (left, right)
+
+    @visitor(NotOp)
+    def visit(self, node, op):
+        return '(not %s)' % op
+
+    @visitor(KeywordOp)
+    def visit(self, node, left, right):
+        return '%s:%s' % (left, right)
+
+    @visitor(Keyword)
+    def visit(self, node):
+        return '%s' % node.value
+
+    @visitor(Value)
+    def visit(self, node):
+        return "%s" % node.value
+
+    @visitor(SingleQuotedValue)
+    def visit(self, node):
+        return "'%s'" % node.value
+
+    @visitor(DoubleQuotedValue)
+    def visit(self, node):
+        return '"%s"' % node.value
+
+    @visitor(RegexValue)
+    def visit(self, node):
+        return "/%s/" % node.value
+
+    @visitor(RangeOp)
+    def visit(self, node, left, right):
+        return "%s->%s" % (left, right)
+
+    @visitor(SpiresOp)
+    def visit(self, node, left, right):
+        return "find %s %s" % (left, right)
+
+
+visitor = make_visitor()
+
+class SpiresToInvenio(object):
+
+    @visitor(AndOp)
+    def visit(self, node, left, right):
+        return type(node)(left, right)
+    @visitor(OrOp)
+    def visit(self, node, left, right):
+        return type(node)(left, right)
+    @visitor(KeywordOp)
+    def visit(self, node, left, right):
+        return type(node)(left, right)
+    @visitor(RangeOp)
+    def visit(self, node, left, right):
+        return type(node)(left, right)
+
+    @visitor(NotOp)
+    def visit(self, node, op):
+        return type(node)(op)
+
+    @visitor(Keyword)
+    def visit(self, node):
+        return type(node)(node.value)
+    @visitor(Value)
+    def visit(self, node):
+        return type(node)(node.value)
+    @visitor(SingleQuotedValue)
+    def visit(self, node):
+        return type(node)(node.value)
+    @visitor(DoubleQuotedValue)
+    def visit(self, node):
+        return type(node)(node.value)
+    @visitor(RegexValue)
+    def visit(self, node):
+        return type(node)(node.value)
+
+    @visitor(SpiresOp)
+    def visit(self, node, left, right):
+        # TODO: replace left spires keyword with invenio field
+        return KeywordOp(left, right)
