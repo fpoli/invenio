@@ -302,12 +302,30 @@ class TestParser(InvenioTestCase):
     )
 
     queries = (
-        ("foo:bar foo:bar",
-         AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
-        ("foo:bar -foo:bar",
+       # ("J. Ellis",
+       #  AndOp(Value('J.'), Value('Ellis'))),
+        # ("foo:bar foo:bar",
+        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        # ("foo:bar -foo:bar",
+        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        # ("foo:bar- foo:bar",
+        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        ("foo:bar))foo foo:bar",
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
-        ("(foo:bar)",
-        KeywordOp(Keyword('foo'), Value('bar'))),
+        # ("find a foo:bar",
+        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        # ("(foo:bar)",
+        # KeywordOp(Keyword('foo'), Value('bar'))),
+        # ("find foo bar bar2 and foo:bar",
+        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        # ("(foo:bar) AND foo:bar)",
+        # KeywordOp(Keyword('foo'), Value('bar'))),
+        # ("foo:bar(",
+        # KeywordOp(Keyword('foo'), Value('bar'))),
+        # ("foo:bar (hello)",
+        # KeywordOp(Keyword('foo'), Value('bar'))),
+        # ("foo:bar( (hello)",
+        # KeywordOp(Keyword('foo'), Value('bar'))),
     )
 
 TEST_SUITE = make_test_suite(TestLexer, TestParser)

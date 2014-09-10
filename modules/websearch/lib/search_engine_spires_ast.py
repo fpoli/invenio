@@ -91,6 +91,9 @@ class Leaf(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.value == other.value
 
+    def __repr__(self):
+        return '%s %s' % (type(self), self.value)
+
 
 class Keyword(Leaf):
     pass
