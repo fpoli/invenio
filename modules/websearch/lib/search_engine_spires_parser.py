@@ -47,7 +47,7 @@ def generate_lexer():
     lg.add(">=", r">=")
     lg.add(">", r">")
     lg.add("<", r"<")
-    lg.add("A_+", r"\+")
+    lg.add("+", r"\+")
     lg.add("AFTER", re.compile(r"\bafter\b", re.I))
     lg.add("BEFORE", re.compile(r"\bbefore\b", re.I))
     lg.add("NOT", re.compile(r"\bnot\b", re.I))
@@ -61,9 +61,10 @@ def generate_lexer():
     # lg.add("WORD", r"[\w\d]+(?=:|\)|\s)")
     # lg.add('KEYWORD', r'(?<=^\(*)foo')
     # lg.add('KEYWORD', r'(?<=\s)\(*)foo')
-    lg.add('KEYWORD', r'foo')
+    # lg.add('KEYWORD', r'foo')
     # lg.add('-KEYWORD', r'-\s*foo')
-    lg.add("-", r"(?<=\s)-")
+    # lg.add("-", r"(?<=\s)-")
+    lg.add("-", r"-")
     lg.add("WORD", r"[\w\d]+")
     lg.add("XWORD", r"[^\w\d\s]+")
     # lg.add("XWORD", r".+")
@@ -72,161 +73,138 @@ def generate_lexer():
 
     return lg.build()
 
-def generate_first_pass_parser(lexer, cache_id):
+
+def generate_parser(lexer, cache_id):
     pg = ParserGenerator([rule.name for rule in lexer.rules], cache_id=cache_id)
 
-    @pg.production("main : query")
-    def main(p):  # pylint: disable=W0612
-        return p[0]
-
-    @pg.production("query : token query")
+    @pg.production("main : _? query")
     def rule(p):  # pylint: disable=W0612
-        return [p[0]] + p[1]
-
-    @pg.production("token : COLON")
-    @pg.production("token : FIND")
-    @pg.production("token : ->")
-    @pg.production("token : (")
-    @pg.production("token : )")
-    @pg.production("token : AND")
-    @pg.production("token : OR")
-    @pg.production("token : |")
-    @pg.production("token : <=")
-    @pg.production("token : >=")
-    @pg.production("token : >")
-    @pg.production("token : <")
-    @pg.production("token : plus")
-    @pg.production("token : AFTER")
-    @pg.production("token : BEFORE")
-    @pg.production("token : NOT")
-    @pg.production("token : SINGLE_QUOTED_STRING")
-    @pg.production("token : DOUBLE_QUOTED_STRING")
-    @pg.production("token : REGEX_STRING")
-    @pg.production("token : *")
-    @pg.production("token : KEYWORD")
-    @pg.production("token : WORD")
-    @pg.production("token : XWORD")
-    @pg.production("token : whitespace")
-    def rule(p):  # pylint: disable=W0612
-        return p[0]
-
-    @pg.production("plus : _ A_+")
-    def rule(p):  # pylint: disable=W0612
-        p[1].name = '+'
         return p[1]
 
-    @pg.production("whitespace : _")
+    @pg.production("main : FIND _ WORD value")
+    def rule(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("query : ( _? query _? )")
+    def rule(p):  # pylint: disable=W0612
+        return p[2]
+
+    @pg.production("_? : ")
+    @pg.production("_? : _")
     def rule(p):  # pylint: disable=W0612
         return None
 
-    @pg.error
-    def error_handler(token):  # pylint: disable=W0612
-        raise ValueError("Ran into a %s where it wasn't expected" % token.gettokentype())
-
-    return Parser(lexer, pg.build())
-
-
-def generate_second_pass_parser(lexer, cache_id):
-    pg = ParserGenerator([rule.name for rule in lexer.rules], cache_id=cache_id)
-
-    @pg.production("main : query")
-    def main(p):  # pylint: disable=W0612
-        return p[0]
-
-    @pg.production("query : ( query )")
-    def query1(p):  # pylint: disable=W0612
+    @pg.production("isolated_query : ( _? query _? )")
+    def rule(p):  # pylint: disable=W0612
         return p[1]
 
-    @pg.production("query : simple_query AND query")
-    def query2(p):  # pylint: disable=W0612
-        return AndOp(p[0], p[2])
-
-    @pg.production("query : simple_query OR query")
-    @pg.production("query : simple_query | query")
-    def query3(p):  # pylint: disable=W0612
-        return OrOp(p[0], p[2])
-
-    @pg.production("query : NOT simple_query")
-    @pg.production("query : - simple_query")
-    def query4(p):  # pylint: disable=W0612
-        return NotOp(p[1])
-
-    @pg.production("query : simple_query query")
-    def query5(p):  # pylint: disable=W0612
-        return AndOp(p[0], p[1])
+    @pg.production("isolated_query : _ query")
+    def rule(p):  # pylint: disable=W0612
+        return p[1]
 
     @pg.production("query : simple_query")
-    def query6(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         return p[0]
 
-    @pg.production("simple_query : WORD COLON keyword_value")
-    def simple_query(p):  # pylint: disable=W0612
-        keyword = Keyword(p[0].value)
-        return KeywordOp(keyword, p[2])
+    @pg.production("query : query _ AND isolated_query")
+    @pg.production("query : query _ + _? query")
+    @pg.production("query : query _ query")
+    def rule(p):  # pylint: disable=W0612
+        return AndOp(p[0], p[-1])
 
-    # @pg.production("simple_query : -KEYWORD COLON keyword_value")
-    # def simple_query(p):  # pylint: disable=W0612
-    #     keyword = Keyword(p[0].value[1:])
-    #     return NotOp(KeywordOp(keyword, p[2]))
+    @pg.production("query : query _ OR isolated_query")
+    @pg.production("query : query _ | _? query")
+    def rule(p):  # pylint: disable=W0612
+        return OrOp(p[0], p[-1])
 
-    @pg.production("simple_query : keyword_value")
-    def simple_query(p):  # pylint: disable=W0612
+    @pg.production("query : NOT isolated_query")
+    @pg.production("query : - _? query")
+    def rule(p):  # pylint: disable=W0612
+        return NotOp(p[-1])
+
+    @pg.production("query : simple_query")
+    def rule(p):  # pylint: disable=W0612
         return p[0]
+
+    @pg.production("more_query :")
+    def rule(p):  # pylint: disable=W0612
+        return None
+
+    @pg.production("more_query : value")
+    def rule(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("more_query : _? COLON _? keyword_value")
+    def rule(p):  # pylint: disable=W0612
+        return p[1], p[-1]
+
+    @pg.production("simple_query : WORD more_query")
+    def rule(p):  # pylint: disable=W0612
+        if p[1] and not isinstance(p[1], Value):
+            keyword = Keyword(p[0].value)
+            return KeywordOp(keyword, p[1][1])
+        elif p[1]:
+            return Value(p[0].value + p[1].value)
+        else:
+            return Value(p[0].value)
 
     @pg.production("keyword_value : SINGLE_QUOTED_STRING")
-    def keyword_value1(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         return SingleQuotedValue(p[0].value[1:-1])
 
     @pg.production("keyword_value : DOUBLE_QUOTED_STRING")
-    def keyword_value2(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         return DoubleQuotedValue(p[0].value[1:-1])
 
     @pg.production("keyword_value : REGEX_STRING")
-    def keyword_value3(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         return RegexValue(p[0].value[1:-1])
 
-    @pg.production("keyword_value : range_value -> range_value")
-    def keyword_value4(p):  # pylint: disable=W0612
+    @pg.production("keyword_value : value -> value")
+    def rule(p):  # pylint: disable=W0612
         return RangeOp(p[0], p[2])
 
     @pg.production("keyword_value : value")
-    def keyword_value5(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         return p[0]
 
-    @pg.production("end_value_unit : WORD")
-    @pg.production("end_value_unit : XWORD")
-    # @pg.production("end_value_unit : (")
-    # @pg.production("end_value_unit : )")
-    @pg.production("end_value_unit : *")
-    @pg.production("end_value_unit : <")
-    @pg.production("end_value_unit : <=")
-    @pg.production("end_value_unit : >")
-    @pg.production("end_value_unit : >=")
-    def value_unit(p):  # pylint: disable=W0612
-        print 'p', p
-        print 'value_unit', p
-        return p[0]
-
-    @pg.production("value_unit : end_value_unit")
-    # @pg.production("value_unit : -")
+    @pg.production("value_unit : -")
+    @pg.production("value_unit : WORD")
+    @pg.production("value_unit : XWORD")
+    @pg.production("value_unit : AFTER")
+    @pg.production("value_unit : BEFORE")
+    @pg.production("value_unit : AND")
+    @pg.production("value_unit : OR")
+    @pg.production("value_unit : NOT")
+    @pg.production("value_unit : |")
+    @pg.production("value_unit : +")
+    @pg.production("value_unit : *")
+    @pg.production("value_unit : <")
+    @pg.production("value_unit : <=")
+    @pg.production("value_unit : >")
+    @pg.production("value_unit : >=")
     def rule(p):  # pylint: disable=W0612
         print 'value_unit', p[0].value
         return p[0].value
 
-    @pg.production("range_value : value")
-    def range_value(p):  # pylint: disable=W0612
-        return p[0]
-
     @pg.production("value : value_unit")
-    def value(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         print 'value : value_unit', p
         return Value(p[0])
 
     @pg.production("value : value_unit value")
-    def value(p):  # pylint: disable=W0612
+    def rule(p):  # pylint: disable=W0612
         print 'value : value_unit value', p
         return Value(p[0] + p[1].value)
 
+    @pg.production("value : ( value )")
+    def rule(p):  # pylint: disable=W0612
+        return Value(p[0].value + p[1].value + p[2].value)
+
+    @pg.production("value : value_unit value")
+    def rule(p):  # pylint: disable=W0612
+        print 'value : value_unit value', p
+        return Value(p[0] + p[1].value)
 
     @pg.error
     def error_handler(token):  # pylint: disable=W0612
@@ -247,8 +225,7 @@ class Parser(object):
 
 
 LEXER = generate_lexer()
-PARSER_FIRST_PASS = generate_first_pass_parser(LEXER, cache_id="parser_first_pass")
-PARSER_SECOND_PASS = generate_second_pass_parser(LEXER, cache_id="parser_second_pass")
+PARSER = generate_parser(LEXER, cache_id="parser")
 
 
 def lexQuery(query, lexer=LEXER):
