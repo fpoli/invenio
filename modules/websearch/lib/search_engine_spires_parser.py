@@ -37,7 +37,6 @@ def generate_lexer():
     lg.add("->", r"->")
     lg.add("(", r"\(")
     lg.add(")", r"\)")
-    lg.add("-", r"-")
     lg.add("AND", re.compile(r"\band\b", re.I))
     lg.add("OR", re.compile(r"\bor\b", re.I))
     lg.add("|", r"\|")
@@ -57,6 +56,9 @@ def generate_lexer():
     lg.add("*", r"\*")
     # lg.add("NUMBER", r"\b\d+\b")
     # lg.add("WORD", r"[\w\d]+(?=:|\)|\s)")
+    lg.add('KEYWORD', r'foo')
+    lg.add('-KEYWORD', r'-foo')
+    lg.add("-", r"-")
     lg.add("WORD", r"[\w\d]+")
     lg.add("XWORD", r"[^\w\d\s]+")
     # lg.add("XWORD", r".+")
@@ -86,8 +88,8 @@ def generate_parser(lexer, cache_id):
     def query3(p):  # pylint: disable=W0612
         return OrOp(p[0], p[2])
 
-    @pg.production("query : NOT query")
-    @pg.production("query : - query")
+    @pg.production("query : NOT simple_query")
+    @pg.production("query : - simple_query")
     def query4(p):  # pylint: disable=W0612
         return NotOp(p[1])
 
@@ -99,10 +101,15 @@ def generate_parser(lexer, cache_id):
     def query6(p):  # pylint: disable=W0612
         return p[0]
 
-    @pg.production("simple_query : WORD COLON keyword_value")
+    @pg.production("simple_query : KEYWORD COLON keyword_value")
     def simple_query(p):  # pylint: disable=W0612
         keyword = Keyword(p[0].value)
         return KeywordOp(keyword, p[2])
+
+    @pg.production("simple_query : -KEYWORD COLON keyword_value")
+    def simple_query(p):  # pylint: disable=W0612
+        keyword = Keyword(p[0].value[1:])
+        return NotOp(KeywordOp(keyword, p[2]))
 
     @pg.production("simple_query : keyword_value")
     def simple_query(p):  # pylint: disable=W0612
@@ -128,17 +135,24 @@ def generate_parser(lexer, cache_id):
     def keyword_value5(p):  # pylint: disable=W0612
         return p[0]
 
-    @pg.production("value_unit : WORD")
-    @pg.production("value_unit : XWORD")
-    @pg.production("value_unit : -")
-    @pg.production("value_unit : (")
-    @pg.production("value_unit : )")
-    @pg.production("value_unit : *")
-    @pg.production("value_unit : <")
-    @pg.production("value_unit : <=")
-    @pg.production("value_unit : >")
-    @pg.production("value_unit : >=")
+    @pg.production("end_value_unit : WORD")
+    @pg.production("end_value_unit : XWORD")
+    @pg.production("end_value_unit : (")
+    @pg.production("end_value_unit : )")
+    @pg.production("end_value_unit : *")
+    @pg.production("end_value_unit : <")
+    @pg.production("end_value_unit : <=")
+    @pg.production("end_value_unit : >")
+    @pg.production("end_value_unit : >=")
     def value_unit(p):  # pylint: disable=W0612
+        print 'p', p
+        print 'value_unit', p
+        return p[0]
+
+    @pg.production("value_unit : end_value_unit")
+    @pg.production("value_unit : -")
+    def rule(p):  # pylint: disable=W0612
+        print 'value_unit', p[0].value
         return p[0].value
 
     @pg.production("range_value : value")
@@ -147,10 +161,12 @@ def generate_parser(lexer, cache_id):
 
     @pg.production("value : value_unit value")
     def value(p):  # pylint: disable=W0612
+        print 'value : value_unit value', p
         return Value(p[0] + p[1].value)
 
     @pg.production("value : value_unit")
     def value(p):  # pylint: disable=W0612
+        print 'value : value_unit', p
         return Value(p[0])
 
     @pg.error

@@ -202,6 +202,7 @@ class TestLexer(InvenioTestCase):
          [Token('FIND', 'find'), Token('WORD', 'a'), Token('WORD', 'richter'), Token('XWORD', ','), Token('WORD', 'b'), Token('AND', 'and'), Token('WORD', 't'), Token('WORD', 'quark'), Token('AND', 'and'), Token('WORD', 'date'), Token('>', '>'), Token('WORD', '1984')]),
     )
 
+    queries = ()
 
 @generate_tests(generate_parser_test)  # pylint: disable=R0903
 class TestParser(InvenioTestCase):
@@ -286,8 +287,8 @@ class TestParser(InvenioTestCase):
          OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
         ("foo:bar not foo:bar",
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
-        # ("foo:bar -foo:bar",
-        #  AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        ("foo:bar -foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
         # ("((foo:bar))",
         #  [Token('(', '('), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token(')', ')')]),
         # ("(foo:bar)",
@@ -300,6 +301,14 @@ class TestParser(InvenioTestCase):
         #  [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('OR', 'or'), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
     )
 
+    queries = (
+        ("foo:bar foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        ("foo:bar -foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        ("(foo:bar)",
+        KeywordOp(Keyword('foo'), Value('bar'))),
+    )
 
 TEST_SUITE = make_test_suite(TestLexer, TestParser)
 
