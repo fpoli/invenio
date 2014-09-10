@@ -326,8 +326,8 @@ class TestParser(InvenioTestCase):
         # Spires syntax
         ("find t quark",
          SpiresOp(Keyword('t'), Value('quark'))),
-        # ("find t quark a ellis",
-        #  SpiresOp(Keyword('t'), Value('quark'))),
+        ("find a richter, b",
+         SpiresOp(Keyword('a'), Value('richter, b'))),
     )
 
 

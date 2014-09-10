@@ -81,9 +81,22 @@ def generate_parser(lexer, cache_id):
     def rule(p):  # pylint: disable=W0612
         return p[1]
 
-    @pg.production("main : FIND _ WORD _ value")
+    @pg.production("main : FIND _ WORD _ spires_value")
     def rule(p):  # pylint: disable=W0612
         return SpiresOp(Keyword(p[2].value), p[4])
+
+    @pg.production("spires_value : value _ spires_value")
+    def rule(p):  # pylint: disable=W0612
+        return Value(p[0].value + p[1].value  + p[2].value)
+
+    @pg.production("spires_value : value")
+    def rule(p):  # pylint: disable=W0612
+        return p[0]
+
+    @pg.production("main : FIND _ WORD _ spires_value")
+    def rule(p):  # pylint: disable=W0612
+        return SpiresOp(Keyword(p[2].value), p[4])
+
 
     @pg.production("query : ( _? query _? )")
     def rule(p):  # pylint: disable=W0612
