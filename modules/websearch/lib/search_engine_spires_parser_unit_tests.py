@@ -239,6 +239,11 @@ class TestParser(InvenioTestCase):
        ("999__u: bar",
         KeywordOp(Keyword('999__u'), Value('bar'))),
 
+        ("foo:e(-)",
+         KeywordOp(Keyword('foo'), Value('e(-)'))),
+        ("foo:e(+)e(-)",
+         KeywordOp(Keyword('foo'), Value('e(+)e(-)'))),
+
         # Quoted strings
         ("foo: 'bar'",
         KeywordOp(Keyword('foo'), SingleQuotedValue('bar'))),

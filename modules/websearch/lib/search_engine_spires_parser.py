@@ -214,6 +214,10 @@ def generate_parser(lexer, cache_id):
     def rule(p):  # pylint: disable=W0612
         return Value(p[0].value + p[1].value + p[2].value)
 
+    @pg.production("value : ( value ) value")
+    def rule(p):  # pylint: disable=W0612
+        return Value(p[0].value + p[1].value + p[2].value + p[3].value)
+
     @pg.production("value : value_unit value")
     def rule(p):  # pylint: disable=W0612
         print 'value : value_unit value', p
