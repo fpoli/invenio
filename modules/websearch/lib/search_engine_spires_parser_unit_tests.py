@@ -27,7 +27,9 @@ from invenio.testutils import (make_test_suite,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
                                                  lexQuery,
-                                                 Token)
+                                                 Token,
+                                                 generate_lexer,
+                                                 generate_parser)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
@@ -339,6 +341,16 @@ class TestParser(InvenioTestCase):
         ("find t quark   ",
          SpiresOp(Keyword('t'), Value('quark'))),
     )
+
+    def test_rr_conflicts(self):
+        "Test that the parser has no reduce/reduce conflict"
+        parser = generate_parser(generate_lexer(), None)
+        self.assertEqual(parser.parser.lr_table.rr_conflicts, [])
+
+    # def test_sr_conflicts(self):
+    #     "Test that the parser has no shift/reduce conflict"
+    #     parser = generate_parser(generate_lexer(), None)
+    #     self.assertEqual(parser.parser.lr_table.sr_conflicts, [])
 
 
 @generate_tests(partial(generate_walker_test, walker=SpiresToInvenio))  # pylint: disable=R0903
