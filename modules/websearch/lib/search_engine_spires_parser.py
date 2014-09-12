@@ -66,7 +66,7 @@ def generate_lexer():
     # lg.add("-", r"(?<=\s)-")
     lg.add("-", r"-")
     lg.add("WORD", r"[\w\d]+")
-    lg.add("XWORD", r"[^\w\d\s]+")
+    lg.add("XWORD", r"[^\w\d\s\(\)]+")
     # lg.add("XWORD", r".+")
     lg.add('_', r"\s+")
     # lg.ignore(r"\s+")
@@ -145,11 +145,14 @@ def generate_parser(lexer, cache_id):
     @pg.production("simple_query : WORD more_query")
     def rule(p):  # pylint: disable=W0612
         if p[1] and not isinstance(p[1], Value):
+            # production "more_query : _? COLON _? keyword_value"
             keyword = Keyword(p[0].value)
             return KeywordOp(keyword, p[1][1])
         elif p[1]:
+            # production "more_query : value"
             return Value(p[0].value + p[1].value)
         else:
+            # production "more_query :"
             return Value(p[0].value)
 
     @pg.production("keyword_value : SINGLE_QUOTED_STRING")
@@ -188,35 +191,24 @@ def generate_parser(lexer, cache_id):
     @pg.production("value_unit : >")
     @pg.production("value_unit : >=")
     def rule(p):  # pylint: disable=W0612
-        print 'value_unit', p[0].value
         return p[0].value
 
     @pg.production("value : value_unit")
     def rule(p):  # pylint: disable=W0612
-        print 'value : value_unit', p
         return Value(p[0])
 
-    @pg.production("value : value_unit value")
+    @pg.production("value : value value")
     def rule(p):  # pylint: disable=W0612
-        print 'value : value_unit value', p
-        return Value(p[0] + p[1].value)
+        return Value(p[0].value + p[1].value)
 
     @pg.production("value : ( value )")
     def rule(p):  # pylint: disable=W0612
         return Value(p[0].value + p[1].value + p[2].value)
 
-    @pg.production("value : ( value ) value")
-    def rule(p):  # pylint: disable=W0612
-        return Value(p[0].value + p[1].value + p[2].value + p[3].value)
-
-    @pg.production("value : value_unit value")
-    def rule(p):  # pylint: disable=W0612
-        print 'value : value_unit value', p
-        return Value(p[0] + p[1].value)
-
     @pg.error
     def error_handler(token):  # pylint: disable=W0612
-        raise ValueError("Ran into a %s where it wasn't expected" % token.gettokentype())
+        raise ValueError("Ran into a %s where it wasn't expected"
+                         % token.gettokentype())
 
     return Parser(lexer, pg.build())
 
@@ -228,7 +220,6 @@ class Parser(object):
 
     def parse(self, query):
         tokens = list(self.lexer.lex(query))
-        print 'tokens', tokens
         return self.parser.parse(iter(tokens))
 
 

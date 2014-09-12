@@ -239,11 +239,6 @@ class TestParser(InvenioTestCase):
        ("999__u: bar",
         KeywordOp(Keyword('999__u'), Value('bar'))),
 
-        ("foo:e(-)",
-         KeywordOp(Keyword('foo'), Value('e(-)'))),
-        ("foo:e(+)e(-)",
-         KeywordOp(Keyword('foo'), Value('e(+)e(-)'))),
-
         # Quoted strings
         ("foo: 'bar'",
         KeywordOp(Keyword('foo'), SingleQuotedValue('bar'))),
@@ -276,9 +271,15 @@ class TestParser(InvenioTestCase):
         ("foo: *hello",
          KeywordOp(Keyword('foo'), Value('*hello'))),
 
-        # O'Shea
+        # Special characters in keyword:value
         ("foo: O'Shea",
          KeywordOp(Keyword('foo'), Value("O'Shea"))),
+        ("foo: e(-)",
+         KeywordOp(Keyword('foo'), Value('e(-)'))),
+        ("foo: e(+)e(-)",
+         KeywordOp(Keyword('foo'), Value('e(+)e(-)'))),
+        ("title: Si-28(p(pol.),n(pol.))",
+         KeywordOp(Keyword('title'), Value('Si-28(p(pol.),n(pol.))'))),
 
         # Unicode characters
         ("foo: пушкин",
