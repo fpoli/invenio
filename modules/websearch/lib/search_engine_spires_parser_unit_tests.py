@@ -222,22 +222,24 @@ class TestParser(InvenioTestCase):
     """Test parser functionality"""
 
     queries = (
-       ("bar",
-        Value('bar')),
+        ("bar",
+         Value('bar')),
         ("J. Ellis",
-        AndOp(Value('J.'), Value('Ellis'))),
+         AndOp(Value('J.'), Value('Ellis'))),
 
-       # Basic keyword:value
-       ("foo:bar",
-        KeywordOp(Keyword('foo'), Value('bar'))),
-       ("foo: bar",
-        KeywordOp(Keyword('foo'), Value('bar'))),
-       ("999: bar",
-        KeywordOp(Keyword('999'), Value('bar'))),
-       ("999C5: bar",
-        KeywordOp(Keyword('999C5'), Value('bar'))),
-       ("999__u: bar",
-        KeywordOp(Keyword('999__u'), Value('bar'))),
+        # Basic keyword:value
+        ("foo:bar",
+         KeywordOp(Keyword('foo'), Value('bar'))),
+        ("foo: bar",
+         KeywordOp(Keyword('foo'), Value('bar'))),
+        ("999: bar",
+         KeywordOp(Keyword('999'), Value('bar'))),
+        ("999C5: bar",
+         KeywordOp(Keyword('999C5'), Value('bar'))),
+        ("999__u: bar",
+         KeywordOp(Keyword('999__u'), Value('bar'))),
+        ("  foo  :  bar  ",
+         KeywordOp(Keyword('foo'), Value('bar'))),
 
         # Quoted strings
         ("foo: 'bar'",
@@ -334,6 +336,8 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('t'), Value('quark'))),
         ("find a richter, b",
          SpiresOp(Keyword('a'), Value('richter, b'))),
+        ("find t quark   ",
+         SpiresOp(Keyword('t'), Value('quark'))),
     )
 
 

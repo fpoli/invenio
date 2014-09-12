@@ -77,7 +77,7 @@ def generate_lexer():
 def generate_parser(lexer, cache_id):
     pg = ParserGenerator([rule.name for rule in lexer.rules], cache_id=cache_id)
 
-    @pg.production("main : _? query")
+    @pg.production("main : _? query _?")
     def rule(p):  # pylint: disable=W0612
         return p[1]
 
@@ -94,7 +94,7 @@ def generate_parser(lexer, cache_id):
     def rule(p):  # pylint: disable=W0612
         return Value(p[0].value + p[1].value  + p[2].value)
 
-    @pg.production("spires_value : value")
+    @pg.production("spires_value : value _?")
     def rule(p):  # pylint: disable=W0612
         return p[0]
 
