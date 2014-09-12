@@ -130,30 +130,18 @@ def generate_parser(lexer, cache_id):
     def rule(p):  # pylint: disable=W0612
         return NotOp(p[-1])
 
-    @pg.production("more_query :")
+    @pg.production("simple_query : WORD")
     def rule(p):  # pylint: disable=W0612
-        return None
+        return Value(p[0].value)
 
-    @pg.production("more_query : value")
+    @pg.production("simple_query : WORD value")
     def rule(p):  # pylint: disable=W0612
-        return p[0]
+        return Value(p[0].value + p[1].value)
 
-    @pg.production("more_query : _? COLON _? keyword_value")
+    @pg.production("simple_query : WORD _? COLON _? keyword_value")
     def rule(p):  # pylint: disable=W0612
-        return p[1], p[-1]
-
-    @pg.production("simple_query : WORD more_query")
-    def rule(p):  # pylint: disable=W0612
-        if p[1] and not isinstance(p[1], Value):
-            # production "more_query : _? COLON _? keyword_value"
-            keyword = Keyword(p[0].value)
-            return KeywordOp(keyword, p[1][1])
-        elif p[1]:
-            # production "more_query : value"
-            return Value(p[0].value + p[1].value)
-        else:
-            # production "more_query :"
-            return Value(p[0].value)
+        keyword = Keyword(p[0].value)
+        return KeywordOp(keyword, p[-1])
 
     @pg.production("keyword_value : SINGLE_QUOTED_STRING")
     def rule(p):  # pylint: disable=W0612
