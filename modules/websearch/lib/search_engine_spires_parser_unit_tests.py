@@ -27,7 +27,6 @@ from invenio.testutils import (make_test_suite,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
                                                  lexQuery,
-                                                 Token,
                                                  generate_lexer,
                                                  generate_parser)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
@@ -39,14 +38,6 @@ from invenio.search_engine_spires_walking import (TreePrinter,
                                                   SpiresToInvenio,
                                                   TreeRepr)
 from rply import ParsingError
-
-
-@nottest
-def generate_lexer_test(query, expected):
-    def func(self):
-        output = list(lexQuery(query))
-        self.assertEqual(output, expected)
-    return func
 
 
 @nottest
@@ -64,6 +55,7 @@ def generate_parser_test(query, expected):
             self.assertEqual(tree, expected)
     return func
 
+
 @nottest
 def generate_walker_test(query, expected, walker):
     def func(self):
@@ -80,6 +72,7 @@ def generate_walker_test(query, expected, walker):
             self.assertEqual(new_tree, expected)
     return func
 
+
 @nottest
 def generate_tests(generate_test):
     def fun(cls):
@@ -90,133 +83,6 @@ def generate_tests(generate_test):
             setattr(cls, func.__name__, func)
         return cls
     return fun
-
-
-@generate_tests(generate_lexer_test)  # pylint: disable=R0903
-class TestLexer(InvenioTestCase):
-    """Test lexer functionality"""
-
-    queries = (
-        # Basic keyword:value
-        ("foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo: bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('_', ' '), Token('WORD', 'bar')]),
-        ("999:bar",
-         [Token('WORD', '999'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("999C5:bar",
-         [Token('WORD', '999C5'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("999__u:bar",
-         [Token('WORD', '999__u'), Token('COLON', ':'), Token('WORD', 'bar')]),
-
-        # Quoted strings
-        ("foo:'bar'",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('SINGLE_QUOTED_STRING', "'bar'")]),
-        ("foo:\"bar\"",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"bar"')]),
-        ("foo:/bar/",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('REGEX_STRING', '/bar/')]),
-        ("foo:\"'bar'\"",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"\'bar\'"')]),
-        ('author:"Ellis, J"',
-         [Token('WORD', 'author'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"Ellis, J"')]),
-
-        # Date Range queries
-        ("year: 2000->2012",
-         [Token('WORD', 'year'), Token('COLON', ':'), Token('_', ' '), Token('WORD', '2000'), Token('->', '->'), Token('WORD', '2012')]),
-        ("year: 2000-10->2012-09",
-         [Token('WORD', 'year'), Token('COLON', ':'), Token('_', ' '), Token('WORD', '2000'),
-          Token('-', '-'), Token('WORD', '10'), Token('->', '->'),
-          Token('WORD', '2012'), Token('-', '-'), Token('WORD', '09')]),
-
-        # Star patterns
-        ("foo:hello*",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'hello'), Token('*', '*')]),
-        ("foo:'hello*'",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('SINGLE_QUOTED_STRING', "'hello*'")]),
-        ("foo:\"hello*\"",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"hello*"')]),
-        ("foo:he*o",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'o')]),
-        ("foo:he*lo*",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'he'), Token('*', '*'), Token('WORD', 'lo'), Token('*', '*')]),
-        ("foo:*hello",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('*', '*'), Token('WORD', 'hello')]),
-
-        # O'Shea
-        ("foo:O'Shea",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'O'), Token('XWORD', "'"), Token('WORD', 'Shea')]),
-
-        # Unicode characters
-        ("foo:пушкин",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('XWORD', 'пушкин')]),
-        ("foo:Lemaître",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'Lema'), Token('XWORD', 'î'), Token('WORD', 'tre')]),
-        ('foo:"Lemaître"',
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('DOUBLE_QUOTED_STRING', '"Lemaître"')]),
-        ("refersto:hep-th/0201100",
-         [Token('WORD', 'refersto'), Token('COLON', ':'), Token('WORD', 'hep'),
-          Token('-', '-'), Token('WORD', 'th'), Token('XWORD', '/'),
-          Token('WORD', '0201100')]),
-
-        # Combined queries
-        ("foo:bar foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar and foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('AND', 'and'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar AND foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('AND', 'AND'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar or foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('OR', 'or'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar | foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('|', '|'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar not foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('NOT', 'not'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar -foo:bar",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('-', '-'), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("((foo:bar))",
-         [Token('(', '('), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token(')', ')')]),
-        ("(foo:bar)",
-         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
-        ("(foo:bar) or foo:bar",
-         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('_', ' '), Token('OR', 'or'), Token('_', ' '), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar')]),
-        ("foo:bar or (foo:bar)",
-         [Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token('_', ' '), Token('OR', 'or'), Token('_', ' '), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
-        ("(foo:bar) or (foo:bar)",
-         [Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')'), Token('_', ' '), Token('OR', 'or'), Token('_', ' '), Token('(', '('), Token('WORD', 'foo'), Token('COLON', ':'), Token('WORD', 'bar'), Token(')', ')')]),
-
-        # Spires syntax
-        ("find t quark",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark')]),
-        ("find a richter, b",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'a'), Token('_', ' '), Token('WORD', 'richter'), Token('XWORD', ','), Token('_', ' '), Token('WORD', 'b')]),
-        ("find date > 1984",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'date'), Token('_', ' '), Token('>', '>'), Token('_', ' '), Token('WORD', '1984')]),
-        ("find date before 1984",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'date'), Token('_', ' '), Token('BEFORE', 'before'), Token('_', ' '), Token('WORD', '1984')]),
-        ("find date after 1984",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'date'), Token('_', ' '), Token('AFTER', 'after'), Token('_', ' '), Token('WORD', '1984')]),
-        ("find 1984->2000",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', '1984'), Token('->', '->'), Token('WORD', '2000')]),
-        ("find 1984-01->2000-01",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', '1984'), Token('-', '-'), Token('WORD', '01'), Token('->', '->'), Token('WORD', '2000'), Token('-', '-'), Token('WORD', '01')]),
-        ("find j phys.rev.,D50,1140",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'j'), Token('_', ' '), Token('WORD', 'phys'), Token('XWORD', '.'), Token('WORD', 'rev'), Token('XWORD', '.,'), Token('WORD', 'D50'), Token('XWORD', ','), Token('WORD', '1140')]),
-        ("find eprint arxiv:1007.5048",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'eprint'), Token('_', ' '), Token('WORD', 'arxiv'), Token('COLON', ':'), Token('WORD', '1007'), Token('XWORD', '.'), Token('WORD', '5048')]),
-        ('find fulltext "quark-gluon plasma"',
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'fulltext'), Token('_', ' '), Token('DOUBLE_QUOTED_STRING', '"quark-gluon plasma"')]),
-        ('find topcite 200+',
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'topcite'), Token('_', ' '), Token('WORD', '200'), Token('+', '+')]),
-        ("FIND t quark",
-         [Token('FIND', 'FIND'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark')]),
-        ("fin t quark",
-         [Token('FIND', 'fin'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark')]),
-        ("f t quark",
-         [Token('FIND', 'f'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark')]),
-        ("find a richter, b and t quark and date > 1984",
-         [Token('FIND', 'find'), Token('_', ' '), Token('WORD', 'a'), Token('_', ' '), Token('WORD', 'richter'), Token('XWORD', ','), Token('_', ' '), Token('WORD', 'b'), Token('_', ' '), Token('AND', 'and'), Token('_', ' '), Token('WORD', 't'), Token('_', ' '), Token('WORD', 'quark'), Token('_', ' '), Token('AND', 'and'), Token('_', ' '), Token('WORD', 'date'), Token('_', ' '), Token('>', '>'), Token('_', ' '), Token('WORD', '1984')]),
-    )
 
 
 @generate_tests(generate_parser_test)  # pylint: disable=R0903
@@ -348,16 +214,6 @@ class TestParser(InvenioTestCase):
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
     )
 
-    # def test_rr_conflicts(self):
-    #     "Test that the parser has no reduce/reduce conflict"
-    #     parser = generate_parser(generate_lexer(), None)
-    #     self.assertEqual(parser.parser.lr_table.rr_conflicts, [])
-
-    # def test_sr_conflicts(self):
-    #     "Test that the parser has no shift/reduce conflict"
-    #     parser = generate_parser(generate_lexer(), None)
-    #     self.assertEqual(parser.parser.lr_table.sr_conflicts, [])
-
 
 @generate_tests(partial(generate_walker_test, walker=SpiresToInvenio))  # pylint: disable=R0903
 class TestSpiresToInvenio(InvenioTestCase):
@@ -369,7 +225,8 @@ class TestSpiresToInvenio(InvenioTestCase):
     )
 
 
-TEST_SUITE = make_test_suite(TestLexer, TestParser)
+TEST_SUITE = make_test_suite(TestParser, TestSpiresToInvenio)
+
 
 if __name__ == "__main__":
     run_test_suite(TEST_SUITE)
