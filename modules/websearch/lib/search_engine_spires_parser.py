@@ -44,184 +44,198 @@ def generate_lexer():
     lg.add("*", r"\*")
     lg.add("-", r"-")
 
-
-def generate_parser():
     # pylint: disable=C0321,R0903
 
-    class Whitespace(object):
-        grammar = re.compile(r"\s+")
+class Whitespace(object):
+    grammar = re.compile(r"\s+")
 
-    _ = optional(Whitespace)
-    K = Keyword
+_ = optional(Whitespace)
+K = Keyword
 
-    class Not(object):
-        grammar = [re.compile(r"not", re.I), K('-')]
+class Not(object):
+    grammar = [re.compile(r"not", re.I), K('-')]
 
-    class And(object):
-        grammar = [re.compile(r"and", re.I), K('+')]
+class And(object):
+    grammar = [re.compile(r"and", re.I), K('+')]
 
-    class Or(object):
-        grammar = [re.compile(r"or", re.I), K('|')]
+class Or(object):
+    grammar = [re.compile(r"or", re.I), K('|')]
 
-    class Word(Symbol):
-        regex = re.compile(r"[\w\d]+")
+class Word(Symbol):
+    regex = re.compile(r"[\w\d]+")
 
-    class SingleQuotedString(object):
-        grammar = re.compile(r"'[^']*'")
+class SingleQuotedString(object):
+    grammar = re.compile(r"'[^']*'")
 
-    class DoubleQuotedString(object):
-        grammar = re.compile(r'"[^"]*"')
+class DoubleQuotedString(object):
+    grammar = re.compile(r'"[^"]*"')
 
-    class SlashQuotedString(object):
-        grammar = re.compile(r"/[^/]*/")
+class SlashQuotedString(object):
+    grammar = re.compile(r"/[^/]*/")
 
-    class SimpleValue(object):
-        grammar = [
-                    re.compile(r"[^\s\)\(]+"),
-                    SingleQuotedString,
-                    DoubleQuotedString,
-                  ]
+class SimpleValue(object):
+    grammar = [
+                re.compile(r"[^\s\)\(]+"),
+                SingleQuotedString,
+                DoubleQuotedString,
+              ]
 
-    class RangeValue(object):
-        grammar = SimpleValue, K('->'), SimpleValue
+class RangeValue(object):
+    grammar = SimpleValue, K('->'), SimpleValue
 
-    class Value(object):
-        grammar = [
-                    SimpleValue,
-                    SlashQuotedString,
-                    RangeValue,
-                  ]
+class Value(object):
+    grammar = [
+                SimpleValue,
+                SlashQuotedString,
+                RangeValue,
+              ]
 
-    class Find(object):
-        grammar = re.compile(r"(find|fin|f)", re.I)
+class Find(object):
+    grammar = re.compile(r"(find|fin|f)", re.I)
 
-    class SimpleSpiresValue(object):
-        grammar = [Value, K('('), K(')')]
+class SimpleSpiresValue(object):
+    grammar = [Value, K('('), K(')')]
 
-    class SpiresValue(object):
-        grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
+class SpiresValue(object):
+    grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
 
-    class SpiresSimpleQuery(object):
-        grammar = Word, _, SpiresValue
+class SpiresSimpleQuery(object):
+    grammar = Word, _, SpiresValue
 
-    class SpiresNotQuery(object):
-        pass
+class SpiresNotQuery(object):
+    pass
 
-    class SpiresParenthesizedQuery(object):
-        pass
+class SpiresParenthesizedQuery(object):
+    pass
 
-    class SpiresAndQuery(object):
-        pass
+class SpiresAndQuery(object):
+    pass
 
-    class SpiresOrQuery(object):
-        pass
+class SpiresOrQuery(object):
+    pass
 
-    class SpiresQuery(object):
-        grammar = [
-                    SpiresNotQuery,
-                    SpiresParenthesizedQuery,
-                    SpiresAndQuery,
-                    SpiresOrQuery,
-                    SpiresSimpleQuery]
+class SpiresQuery(object):
+    grammar = [
+                SpiresNotQuery,
+                SpiresParenthesizedQuery,
+                SpiresAndQuery,
+                SpiresOrQuery,
+                SpiresSimpleQuery]
 
-    SpiresNotQuery.grammar = (
-                                Not,
-                                [
-                                    (Whitespace, SpiresSimpleQuery),
-                                    SpiresParenthesizedQuery
-                                ]
-                             )
-    SpiresParenthesizedQuery.grammar = K('('), _, SpiresQuery, _, K(')')
-    SpiresAndQuery.grammar = (
-                                [
-                                    SpiresParenthesizedQuery,
-                                    (SpiresSimpleQuery, Whitespace)
-                                ],
-                                And,
-                                [
-                                    (Whitespace, SpiresQuery),
-                                    SpiresParenthesizedQuery
-                                ]
-                             )
-    SpiresOrQuery.grammar = (
-                                [
-                                    SpiresParenthesizedQuery,
-                                    (SpiresSimpleQuery, Whitespace)
-                                ],
-                                Or,
-                                [(Whitespace, SpiresQuery), SpiresParenthesizedQuery]
-                            )
-
-    class SimpleQuery(object):
-        grammar = [
-                    (Word, _, K(':'), _, SpiresValue),
-                    Word
-                  ]
-
-        def __new__(*args):
-            print 'args', repr(args)
-
-        def __init__(self, *args):
-            if len(args) == 1:
-                ast.Value(args[0])
-
-    class NotQuery(object):
-        pass
-
-    class ParenthesizedQuery(object):
-        pass
-
-    class AndQuery(object):
-        pass
-
-    class OrQuery(object):
-        pass
-
-    class Query(object):
-        grammar = [
-                    NotQuery,
-                    ParenthesizedQuery,
-                    AndQuery,
-                    OrQuery,
-                    SimpleQuery
-                  ]
-
-    NotQuery.grammar = (
+SpiresNotQuery.grammar = (
                             Not,
                             [
-                                (Whitespace, SimpleQuery),
-                                ParenthesizedQuery
+                                (Whitespace, SpiresSimpleQuery),
+                                SpiresParenthesizedQuery
                             ]
-                        )
-    ParenthesizedQuery.grammar = K('('), _, Query, _, K(')')
-    AndQuery.grammar = (
+                         )
+SpiresParenthesizedQuery.grammar = K('('), _, SpiresQuery, _, K(')')
+SpiresAndQuery.grammar = (
                             [
-                                ParenthesizedQuery,
-                                (SimpleQuery, Whitespace)
+                                SpiresParenthesizedQuery,
+                                (SpiresSimpleQuery, Whitespace)
                             ],
-                            optional(And),
+                            And,
                             [
-                                (Whitespace, Query),
-                                ParenthesizedQuery
+                                (Whitespace, SpiresQuery),
+                                SpiresParenthesizedQuery
                             ]
-                        )
-    OrQuery.grammar = (
+                         )
+SpiresOrQuery.grammar = (
                             [
-                                ParenthesizedQuery,
-                                (SimpleQuery, Whitespace)
+                                SpiresParenthesizedQuery,
+                                (SpiresSimpleQuery, Whitespace)
                             ],
                             Or,
-                            [(Whitespace, Query), SpiresParenthesizedQuery]
+                            [(Whitespace, SpiresQuery), SpiresParenthesizedQuery]
                         )
 
-    class FindQuery(object):
-        grammar = Find, Whitespace, SpiresQuery, _
+class WordQuery(object):
+    grammar = Word
 
-    class Main(object):
-        grammar = _, [Query, FindQuery], _
+    def __init__(self, value):
+        self.value = value
 
-    # pylint: enable=C0321,R0903
+    def accept(self, visitor):
+        return visitor.visit(self)
 
+class KeywordQuery(object):
+    grammar = Word, _, K(':'), _, SpiresValue
+
+
+class SimpleQuery(object):
+    grammar = [KeywordQuery, WordQuery]
+
+    def __new__(cls, query):
+        return query
+
+
+class NotQuery(object):
+    pass
+
+class ParenthesizedQuery(object):
+    pass
+
+class AndQuery(object):
+    pass
+
+class OrQuery(object):
+    pass
+
+class Query(object):
+    grammar = [
+                NotQuery,
+                ParenthesizedQuery,
+                AndQuery,
+                OrQuery,
+                SimpleQuery
+              ]
+
+    def __new__(cls, query):
+        return query
+
+
+NotQuery.grammar = (
+                        Not,
+                        [
+                            (Whitespace, SimpleQuery),
+                            ParenthesizedQuery
+                        ]
+                    )
+ParenthesizedQuery.grammar = K('('), _, Query, _, K(')')
+AndQuery.grammar = (
+                        [
+                            ParenthesizedQuery,
+                            (SimpleQuery, Whitespace)
+                        ],
+                        optional(And),
+                        [
+                            (Whitespace, Query),
+                            ParenthesizedQuery
+                        ]
+                    )
+OrQuery.grammar = (
+                        [
+                            ParenthesizedQuery,
+                            (SimpleQuery, Whitespace)
+                        ],
+                        Or,
+                        [(Whitespace, Query), SpiresParenthesizedQuery]
+                    )
+
+class FindQuery(object):
+    grammar = Find, Whitespace, SpiresQuery, _
+
+class Main(object):
+    grammar = _, [Query, FindQuery], _
+
+    def __new__(cls, query):
+        return query
+
+# pylint: enable=C0321,R0903
+
+
+def generate_parser():
     return Main
 
 
@@ -252,5 +266,4 @@ WALKERS = load_walkers()
 
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
-    print parse(query, parser)
-    # return parse(query, parser)
+    return parse(query, parser)[0]

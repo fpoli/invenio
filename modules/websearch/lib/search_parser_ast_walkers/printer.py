@@ -47,11 +47,11 @@ class TreePrinter(object):
 
     @visitor(Keyword)
     def visit(self, node):
-        return '`%s`' % node.value
+        return '%s' % node.value
 
     @visitor(Value)
     def visit(self, node):
-        return "'%s'" % node.value
+        return "%s" % node.value
 
     @visitor(SingleQuotedValue)
     def visit(self, node):
@@ -74,6 +74,5 @@ class TreePrinter(object):
         return "find %s %s" % (left, right)
 
     # pylint: enable=W0612,E0102
-
 
 plugin_class = TreePrinter

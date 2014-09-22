@@ -36,7 +36,7 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
 def generate_parser_test(query, expected):
     def func(self):
         tree = parseQuery(query)
-        printer = load_walkers()['printer']
+        printer = load_walkers()['repr_printer']()
         print 'tree', tree.accept(printer)
         print 'expected', expected.accept(printer)
         self.assertEqual(tree, expected)
