@@ -293,9 +293,7 @@ def _plugin_builder(plugin_name, plugin_code):  # pylint: disable=W0613
     @type plugin_code: module
     @return: the plugin
     """
-    plugin = {}
-    plugin["walk"] = getattr(plugin_code, "walk")
-    return plugin
+    return getattr(plugin_code, "plugin_class")
 
 
 def load_walkers():
@@ -307,24 +305,17 @@ def load_walkers():
     plugins = PluginContainer(plugin_dir,
                               plugin_builder=_plugin_builder)
 
-    # Remove __init__ if applicable
-    try:
-        plugins.disable_plugin("__init__")
-    except KeyError:
-        pass
-
     # Check for broken plug-ins
     broken = plugins.get_broken_plugins()
     for plugin, info in broken.items():
         traceback_str = "".join(traceback.format_exception(*info))
         raise Exception("Failed to load %s:\n %s" % (plugin, traceback_str))
 
-    return plugins
+    return plugins.get_enabled_plugins()
 
 
 LEXER = generate_lexer()
 PARSER = generate_parser(LEXER, cache_id="parser")
-WALKERS = load_walkers()
 
 
 def lexQuery(query, lexer=LEXER):
