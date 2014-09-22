@@ -105,7 +105,7 @@ class SingleQuotedValue(Leaf):
 class DoubleQuotedValue(Leaf):
     pass
 
+
 class RegexValue(Leaf):
     pass
-
 

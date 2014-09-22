@@ -17,13 +17,17 @@
 ## along with Invenio; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
+import os
 import re
+import traceback
 
 from rply import ParserGenerator, LexerGenerator
 # for reimporting
 from rply import Token  # pylint: disable=W0611
 
 
+from invenio.config import CFG_PYLIBDIR
+from invenio.pluginutils import PluginContainer
 from invenio.search_engine_spires_ast import (KeywordOp, AndOp, OrOp, NotOp,
                                               Keyword, SingleQuotedValue,
                                               DoubleQuotedValue, Value,
@@ -278,8 +282,49 @@ class Parser(object):
         return self.parser.parse(iter(tokens))
 
 
+def _plugin_builder(plugin_name, plugin_code):  # pylint: disable=W0613
+    """
+    Custom builder for pluginutils.
+
+    @param plugin_name: the name of the plugin.
+    @type plugin_name: string
+    @param plugin_code: the code of the module as just read from
+        filesystem.
+    @type plugin_code: module
+    @return: the plugin
+    """
+    plugin = {}
+    plugin["walk"] = getattr(plugin_code, "walk")
+    return plugin
+
+
+def load_walkers():
+    plugin_dir = os.path.join(CFG_PYLIBDIR,
+                              "invenio",
+                              "search_parser_ast_walkers",
+                              "*.py")
+    # Load plugins
+    plugins = PluginContainer(plugin_dir,
+                              plugin_builder=_plugin_builder)
+
+    # Remove __init__ if applicable
+    try:
+        plugins.disable_plugin("__init__")
+    except KeyError:
+        pass
+
+    # Check for broken plug-ins
+    broken = plugins.get_broken_plugins()
+    for plugin, info in broken.items():
+        traceback_str = "".join(traceback.format_exception(*info))
+        raise Exception("Failed to load %s:\n %s" % (plugin, traceback_str))
+
+    return plugins
+
+
 LEXER = generate_lexer()
 PARSER = generate_parser(LEXER, cache_id="parser")
+WALKERS = load_walkers()
 
 
 def lexQuery(query, lexer=LEXER):
@@ -289,3 +334,6 @@ def lexQuery(query, lexer=LEXER):
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
     return parser.parse(query)
+
+
+
