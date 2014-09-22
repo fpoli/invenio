@@ -83,22 +83,85 @@ def generate_parser(lexer, cache_id):
     def rule(p):
         return p[1]
 
-    @pg.production("main : FIND _ WORD _ spires_value")
+    @pg.production("main : FIND _ spires_query _?")
     def rule(p):  # pylint: disable=W0612
-        return SpiresOp(Keyword(p[2].value), p[4])
+        return p[2]
+
+    @pg.production("spires_query : WORD _ spires_value")
+    def rule(p):  # pylint: disable=W0612
+        return SpiresOp(Keyword(p[0].value), p[-1])
+
+    @pg.production("spires_query : NOT _ spires_query")
+    def rule(p):  # pylint: disable=W0612
+        return NotOp(p[-1])
+
+    @pg.production("spires_query : spires_query _ AND _ spires_query")
+    def rule(p):  # pylint: disable=W0612
+        return AndOp(p[0], p[-1])
+
+    @pg.production("spires_query : spires_query _ AND")
+    def rule(p):  # pylint: disable=W0612
+        return SpiresOp(p[0].left, Value(p[0].right.value + p[1].value))
+
+    @pg.production("spires_query : spires_query _ OR _ spires_query")
+    def rule(p):  # pylint: disable=W0612
+        return OrOp(p[0], p[-1])
+
+    @pg.production("spires_query : spires_query _ OR")
+    def rule(p):  # pylint: disable=W0612
+        return SpiresOp(p[0].left, Value(p[0].right.value + p[1].value))
+
+    @pg.production("spires_query : NOT _ spires_query")
+    def rule(p):  # pylint: disable=W0612
+        return NotOp(p[-1])
 
     @pg.production("_? : ")
     @pg.production("_? : _")
     def rule(p):  # pylint: disable=W0613
         return None
 
-    @pg.production("spires_value : value _ spires_value")
-    def rule(p):
-        return Value(p[0].value + p[1].value  + p[2].value)
+    @pg.production("spires_value : AND _ spires_value_no_op")
+    @pg.production("spires_value : OR _ spires_value_no_op")
+    def rule(p):  # pylint: disable=W0612
+        return Value(p[0].value + p[1].value)
 
-    @pg.production("spires_value : value _?")
-    def rule(p):
+    @pg.production("spires_value : spires_value_no_op")
+    def rule(p):  # pylint: disable=W0612
         return p[0]
+
+    @pg.production("spires_value_no_op : AND spires_value_no_op")
+    @pg.production("spires_value_no_op : OR spires_value_no_op")
+    @pg.production("spires_value_no_op : spires_value_no_op AND")
+    @pg.production("spires_value_no_op : spires_value_no_op OR")
+    @pg.production("spires_value_no_op : spires_value_no_op AND spires_value_unit")
+    @pg.production("spires_value_no_op : spires_value_no_op OR spires_value_unit")
+    @pg.production("spires_value_no_op : spires_value_no_op _ spires_value_no_op")
+    @pg.production("spires_value_no_op : spires_value_no_op spires_value_unit")
+    def rule(p):  # pylint: disable=W0612
+        return SpiresOp(Keyword(p[0].value), Value(p[-1].value))
+
+    def rule(p):
+        return Value(p[0].value + p[1].value  + p[-1].value)
+
+    @pg.production("spires_value_no_op : spires_value_unit")
+    def rule(p):
+        return Value(p[0])
+
+    @pg.production("spires_value_unit : -")
+    @pg.production("spires_value_unit : WORD")
+    @pg.production("spires_value_unit : XWORD")
+    @pg.production("spires_value_unit : AFTER")
+    @pg.production("spires_value_unit : BEFORE")
+    @pg.production("spires_value_unit : NOT")
+    @pg.production("spires_value_unit : |")
+    @pg.production("spires_value_unit : +")
+    @pg.production("spires_value_unit : *")
+    @pg.production("spires_value_unit : <")
+    @pg.production("spires_value_unit : <=")
+    @pg.production("spires_value_unit : >")
+    @pg.production("spires_value_unit : >=")
+    def rule(p):  # pylint: disable=W0612
+        return p[0].value
 
     @pg.production("isolated_query : ( _? query _? )")
     def rule(p):  # pylint: disable=W0612
