@@ -19,57 +19,27 @@
 
 """Unit tests for the search engine query parsers."""
 
-from functools import partial
-
 from invenio.testutils import (make_test_suite,
                                run_test_suite,
                                InvenioTestCase,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
-                                                 lexQuery,
-                                                 generate_lexer,
-                                                 generate_parser)
+                                                 load_walkers)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
                                               DoubleQuotedValue,
                                               RegexValue, RangeOp, SpiresOp)
-from invenio.search_engine_spires_walking import (TreePrinter,
-                                                  SpiresToInvenio,
-                                                  TreeRepr)
-from rply import ParsingError
 
 
 @nottest
 def generate_parser_test(query, expected):
     def func(self):
-        try:
-            tree = parseQuery(query)
-        except ParsingError as e:
-            print 'Source pos', e.getsourcepos()
-            raise
-        else:
-            printer = TreePrinter()
-            print 'tree', tree.accept(printer)
-            print 'expected', expected.accept(printer)
-            self.assertEqual(tree, expected)
-    return func
-
-
-@nottest
-def generate_walker_test(query, expected, walker):
-    def func(self):
-        try:
-            tree = parseQuery(query)
-        except ParsingError as e:
-            print 'Source pos', e.getsourcepos()
-            raise
-        else:
-            printer = TreePrinter()
-            new_tree = tree.accept(walker())
-            print 'tree', new_tree.accept(printer)
-            print 'expected', expected.accept(printer)
-            self.assertEqual(new_tree, expected)
+        tree = parseQuery(query)
+        printer = load_walkers()['printer']
+        print 'tree', tree.accept(printer)
+        print 'expected', expected.accept(printer)
+        self.assertEqual(tree, expected)
     return func
 
 
@@ -216,18 +186,7 @@ class TestParser(InvenioTestCase):
     )
 
 
-@generate_tests(partial(generate_walker_test, walker=SpiresToInvenio))  # pylint: disable=R0903
-class TestSpiresToInvenio(InvenioTestCase):
-
-    """Test parser functionality"""
-
-    queries = (
-        ("find t quark",
-         KeywordOp(Keyword('t'), Value('quark'))),
-    )
-
-
-TEST_SUITE = make_test_suite(TestParser, TestSpiresToInvenio)
+TEST_SUITE = make_test_suite(TestParser)
 
 
 if __name__ == "__main__":

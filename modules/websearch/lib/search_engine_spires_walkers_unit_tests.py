@@ -26,8 +26,6 @@ from invenio.testutils import (make_test_suite,
                                InvenioTestCase,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
-                                                 lexQuery,
-                                                 generate_lexer,
                                                  generate_parser)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,

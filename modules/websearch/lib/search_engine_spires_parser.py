@@ -21,32 +21,17 @@ import os
 import re
 import traceback
 
-from rply import ParserGenerator, LexerGenerator
-# for reimporting
-from rply import Token  # pylint: disable=W0611
+from pypeg2 import Keyword, maybe_some, some, optional, parse, Symbol
 
 
 from invenio.config import CFG_PYLIBDIR
 from invenio.pluginutils import PluginContainer
-from invenio.search_engine_spires_ast import (KeywordOp, AndOp, OrOp, NotOp,
-                                              Keyword, SingleQuotedValue,
-                                              DoubleQuotedValue, Value,
-                                              RegexValue, RangeOp, SpiresOp)
+
+import invenio.search_engine_spires_ast as ast
 
 
 def generate_lexer():
-    lg = LexerGenerator()
-    lg.add("COLON", r":")
-    lg.add("FIND", re.compile(r"^\s*(find|fin|f)\b", re.I))
-    lg.add("->", r"->")
-    # Require whitespace before "(" parenthesis
-    lg.add("(", r"\(")
-    # Require whitespace after ")" parenthesis
-    lg.add(")", r"\)")
     # lg.add(")", r"\)(?=\)*(\s|$))")
-    lg.add("AND", re.compile(r"\band\b", re.I))
-    lg.add("OR", re.compile(r"\bor\b", re.I))
-    lg.add("|", r"\|")
     lg.add("<=", r"<=")
     lg.add(">=", r">=")
     lg.add(">", r">")
@@ -54,256 +39,204 @@ def generate_lexer():
     lg.add("+", r"\+")
     lg.add("AFTER", re.compile(r"\bafter\b", re.I))
     lg.add("BEFORE", re.compile(r"\bbefore\b", re.I))
-    lg.add("NOT", re.compile(r"\bnot\b", re.I))
     # re to match escapes
     # r'"([^\"]|\\.)*([^\\]|\\)"'
-    lg.add("SINGLE_QUOTED_STRING", r"'[^']*'")
-    lg.add("DOUBLE_QUOTED_STRING", r'"[^"]*"')
-    lg.add("REGEX_STRING", r"/[^/]*/")
     lg.add("*", r"\*")
-    # lg.add("NUMBER", r"\b\d+\b")
-    # lg.add("WORD", r"[\w\d]+(?=:|\)|\s)")
-    # lg.add('KEYWORD', r'(?<=^\(*)foo')
-    # lg.add('KEYWORD', r'(?<=\s)\(*)foo')
-    # lg.add('KEYWORD', r'foo')
-    # lg.add('-KEYWORD', r'-\s*foo')
-    # lg.add("-", r"(?<=\s)-")
     lg.add("-", r"-")
-    lg.add("WORD", r"[\w\d]+")
-    lg.add("XWORD", r"[^\w\d\s\(\)]+")
-    # lg.add("XWORD", r".+")
-    lg.add('_', r"\s+")
-    # lg.ignore(r"\s+")
-
-    return lg.build()
 
 
-def generate_parser(lexer, cache_id):
-    pg = ParserGenerator([rule.name for rule in lexer.rules], cache_id=cache_id)
+def generate_parser():
+    # pylint: disable=C0321,R0903
 
-    # pylint: disable=E0102
+    class Whitespace(object):
+        grammar = re.compile(r"\s+")
 
-    @pg.production("main : _? query _?")
-    def rule(p):
-        return p[1]
+    _ = optional(Whitespace)
+    K = Keyword
 
-    @pg.production("main : FIND _ spires_query _?")
-    def rule(p):  # pylint: disable=W0612
-        return p[2]
+    class Not(object):
+        grammar = [re.compile(r"not", re.I), K('-')]
 
-    @pg.production("spires_query : WORD _ spires_value")
-    def rule(p):  # pylint: disable=W0612
-        return SpiresOp(Keyword(p[0].value), p[-1])
+    class And(object):
+        grammar = [re.compile(r"and", re.I), K('+')]
 
-    @pg.production("spires_query : NOT _ spires_query")
-    def rule(p):  # pylint: disable=W0612
-        return NotOp(p[-1])
+    class Or(object):
+        grammar = [re.compile(r"or", re.I), K('|')]
 
-    @pg.production("spires_query : spires_query _ AND _ spires_query")
-    def rule(p):  # pylint: disable=W0612
-        return AndOp(p[0], p[-1])
+    class Word(Symbol):
+        regex = re.compile(r"[\w\d]+")
 
-    @pg.production("spires_query : spires_query _ AND")
-    def rule(p):  # pylint: disable=W0612
-        return SpiresOp(p[0].left, Value(p[0].right.value + p[1].value))
+    class SingleQuotedString(object):
+        grammar = re.compile(r"'[^']*'")
 
-    @pg.production("spires_query : spires_query _ OR _ spires_query")
-    def rule(p):  # pylint: disable=W0612
-        return OrOp(p[0], p[-1])
+    class DoubleQuotedString(object):
+        grammar = re.compile(r'"[^"]*"')
 
-    @pg.production("spires_query : spires_query _ OR")
-    def rule(p):  # pylint: disable=W0612
-        return SpiresOp(p[0].left, Value(p[0].right.value + p[1].value))
+    class SlashQuotedString(object):
+        grammar = re.compile(r"/[^/]*/")
 
-    @pg.production("spires_query : NOT _ spires_query")
-    def rule(p):  # pylint: disable=W0612
-        return NotOp(p[-1])
+    class SimpleValue(object):
+        grammar = [
+                    re.compile(r"[^\s\)\(]+"),
+                    SingleQuotedString,
+                    DoubleQuotedString,
+                  ]
 
-    @pg.production("_? : ")
-    @pg.production("_? : _")
-    def rule(p):  # pylint: disable=W0613
-        return None
+    class RangeValue(object):
+        grammar = SimpleValue, K('->'), SimpleValue
 
-    @pg.production("spires_value : AND _ spires_value_no_op")
-    @pg.production("spires_value : OR _ spires_value_no_op")
-    def rule(p):  # pylint: disable=W0612
-        return Value(p[0].value + p[1].value)
+    class Value(object):
+        grammar = [
+                    SimpleValue,
+                    SlashQuotedString,
+                    RangeValue,
+                  ]
 
-    @pg.production("spires_value : spires_value_no_op")
-    def rule(p):  # pylint: disable=W0612
-        return p[0]
+    class Find(object):
+        grammar = re.compile(r"(find|fin|f)", re.I)
 
-    @pg.production("spires_value_no_op : AND spires_value_no_op")
-    @pg.production("spires_value_no_op : OR spires_value_no_op")
-    @pg.production("spires_value_no_op : spires_value_no_op AND")
-    @pg.production("spires_value_no_op : spires_value_no_op OR")
-    @pg.production("spires_value_no_op : spires_value_no_op AND spires_value_unit")
-    @pg.production("spires_value_no_op : spires_value_no_op OR spires_value_unit")
-    @pg.production("spires_value_no_op : spires_value_no_op _ spires_value_no_op")
-    @pg.production("spires_value_no_op : spires_value_no_op spires_value_unit")
-    def rule(p):  # pylint: disable=W0612
-        return SpiresOp(Keyword(p[0].value), Value(p[-1].value))
+    class SimpleSpiresValue(object):
+        grammar = [Value, K('('), K(')')]
 
-    def rule(p):
-        return Value(p[0].value + p[1].value  + p[-1].value)
+    class SpiresValue(object):
+        grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
 
-    @pg.production("spires_value_no_op : spires_value_unit")
-    def rule(p):
-        return Value(p[0])
+    class SpiresSimpleQuery(object):
+        grammar = Word, _, SpiresValue
 
-    @pg.production("spires_value_unit : -")
-    @pg.production("spires_value_unit : WORD")
-    @pg.production("spires_value_unit : XWORD")
-    @pg.production("spires_value_unit : AFTER")
-    @pg.production("spires_value_unit : BEFORE")
-    @pg.production("spires_value_unit : NOT")
-    @pg.production("spires_value_unit : |")
-    @pg.production("spires_value_unit : +")
-    @pg.production("spires_value_unit : *")
-    @pg.production("spires_value_unit : <")
-    @pg.production("spires_value_unit : <=")
-    @pg.production("spires_value_unit : >")
-    @pg.production("spires_value_unit : >=")
-    def rule(p):  # pylint: disable=W0612
-        return p[0].value
+    class SpiresNotQuery(object):
+        pass
 
-    @pg.production("isolated_query : ( _? query _? )")
-    def rule(p):  # pylint: disable=W0612
-        return p[1]
+    class SpiresParenthesizedQuery(object):
+        pass
 
-    @pg.production("isolated_query : _ query")
-    def rule(p):
-        return p[1]
+    class SpiresAndQuery(object):
+        pass
 
-    @pg.production("query : ( _? query _? )")
-    def rule(p):
-        return p[2]
+    class SpiresOrQuery(object):
+        pass
 
-    @pg.production("query : simple_query")
-    def rule(p):
-        return p[0]
+    class SpiresQuery(object):
+        grammar = [
+                    SpiresNotQuery,
+                    SpiresParenthesizedQuery,
+                    SpiresAndQuery,
+                    SpiresOrQuery,
+                    SpiresSimpleQuery]
 
-    @pg.production("query : query _ AND isolated_query")
-    @pg.production("query : query _ + _? query")
-    @pg.production("query : query _ query")
-    def rule(p):
-        return AndOp(p[0], p[-1])
+    SpiresNotQuery.grammar = (
+                                Not,
+                                [
+                                    (Whitespace, SpiresSimpleQuery),
+                                    SpiresParenthesizedQuery
+                                ]
+                             )
+    SpiresParenthesizedQuery.grammar = K('('), _, SpiresQuery, _, K(')')
+    SpiresAndQuery.grammar = (
+                                [
+                                    SpiresParenthesizedQuery,
+                                    (SpiresSimpleQuery, Whitespace)
+                                ],
+                                And,
+                                [
+                                    (Whitespace, SpiresQuery),
+                                    SpiresParenthesizedQuery
+                                ]
+                             )
+    SpiresOrQuery.grammar = (
+                                [
+                                    SpiresParenthesizedQuery,
+                                    (SpiresSimpleQuery, Whitespace)
+                                ],
+                                Or,
+                                [(Whitespace, SpiresQuery), SpiresParenthesizedQuery]
+                            )
 
-    @pg.production("query : query _ OR isolated_query")
-    @pg.production("query : query _ | _? query")
-    def rule(p):
-        return OrOp(p[0], p[-1])
+    class SimpleQuery(object):
+        grammar = [
+                    (Word, _, K(':'), _, SpiresValue),
+                    Word
+                  ]
 
-    @pg.production("query : NOT isolated_query")
-    @pg.production("query : - _? query")
-    def rule(p):
-        return NotOp(p[-1])
+        def __new__(*args):
+            print 'args', repr(args)
 
-    @pg.production("simple_query : WORD")
-    def rule(p):
-        return Value(p[0].value)
+        def __init__(self, *args):
+            if len(args) == 1:
+                ast.Value(args[0])
 
-    @pg.production("simple_query : WORD value")
-    def rule(p):
-        return Value(p[0].value + p[1].value)
+    class NotQuery(object):
+        pass
 
-    @pg.production("simple_query : WORD _? COLON _? keyword_value")
-    def rule(p):
-        keyword = Keyword(p[0].value)
-        return KeywordOp(keyword, p[-1])
+    class ParenthesizedQuery(object):
+        pass
 
-    @pg.production("keyword_value : SINGLE_QUOTED_STRING")
-    def rule(p):
-        return SingleQuotedValue(p[0].value[1:-1])
+    class AndQuery(object):
+        pass
 
-    @pg.production("keyword_value : DOUBLE_QUOTED_STRING")
-    def rule(p):
-        return DoubleQuotedValue(p[0].value[1:-1])
+    class OrQuery(object):
+        pass
 
-    @pg.production("keyword_value : REGEX_STRING")
-    def rule(p):
-        return RegexValue(p[0].value[1:-1])
+    class Query(object):
+        grammar = [
+                    NotQuery,
+                    ParenthesizedQuery,
+                    AndQuery,
+                    OrQuery,
+                    SimpleQuery
+                  ]
 
-    @pg.production("keyword_value : value -> value")
-    def rule(p):
-        return RangeOp(p[0], p[2])
+    NotQuery.grammar = (
+                            Not,
+                            [
+                                (Whitespace, SimpleQuery),
+                                ParenthesizedQuery
+                            ]
+                        )
+    ParenthesizedQuery.grammar = K('('), _, Query, _, K(')')
+    AndQuery.grammar = (
+                            [
+                                ParenthesizedQuery,
+                                (SimpleQuery, Whitespace)
+                            ],
+                            optional(And),
+                            [
+                                (Whitespace, Query),
+                                ParenthesizedQuery
+                            ]
+                        )
+    OrQuery.grammar = (
+                            [
+                                ParenthesizedQuery,
+                                (SimpleQuery, Whitespace)
+                            ],
+                            Or,
+                            [(Whitespace, Query), SpiresParenthesizedQuery]
+                        )
 
-    @pg.production("keyword_value : value")
-    def rule(p):
-        return p[0]
+    class FindQuery(object):
+        grammar = Find, Whitespace, SpiresQuery, _
 
-    @pg.production("value_unit : -")
-    @pg.production("value_unit : WORD")
-    @pg.production("value_unit : XWORD")
-    @pg.production("value_unit : AFTER")
-    @pg.production("value_unit : BEFORE")
-    @pg.production("value_unit : AND")
-    @pg.production("value_unit : OR")
-    @pg.production("value_unit : NOT")
-    @pg.production("value_unit : |")
-    @pg.production("value_unit : +")
-    @pg.production("value_unit : *")
-    @pg.production("value_unit : <")
-    @pg.production("value_unit : <=")
-    @pg.production("value_unit : >")
-    @pg.production("value_unit : >=")
-    def rule(p):  # pylint: disable=W0612
-        return p[0].value
+    class Main(object):
+        grammar = _, [Query, FindQuery], _
 
-    @pg.production("value : value_unit")
-    def rule(p):
-        return Value(p[0])
+    # pylint: enable=C0321,R0903
 
-    @pg.production("value : value value")
-    def rule(p):
-        return Value(p[0].value + p[1].value)
-
-    @pg.production("value : ( value )")
-    def rule(p):  # pylint: disable=W0612
-        return Value(p[0].value + p[1].value + p[2].value)
-
-    # pylint: enable=E0102
-
-    @pg.error
-    def error_handler(token):  # pylint: disable=W0612
-        raise ValueError("Ran into a %s where it wasn't expected"
-                         % token.gettokentype())
-
-    return Parser(lexer, pg.build())
-
-
-class Parser(object):
-    def __init__(self, lexer, parser):
-        self.lexer = lexer
-        self.parser = parser
-
-    def parse(self, query):
-        tokens = list(self.lexer.lex(query))
-        return self.parser.parse(iter(tokens))
-
-
-def _plugin_builder(plugin_name, plugin_code):  # pylint: disable=W0613
-    """
-    Custom builder for pluginutils.
-
-    @param plugin_name: the name of the plugin.
-    @type plugin_name: string
-    @param plugin_code: the code of the module as just read from
-        filesystem.
-    @type plugin_code: module
-    @return: the plugin
-    """
-    return getattr(plugin_code, "plugin_class")
+    return Main
 
 
 def load_walkers():
+
+    def cb_plugin_builder(plugin_name, plugin_code):
+        return getattr(plugin_code, "plugin_class")
+
     plugin_dir = os.path.join(CFG_PYLIBDIR,
                               "invenio",
                               "search_parser_ast_walkers",
                               "*.py")
     # Load plugins
     plugins = PluginContainer(plugin_dir,
-                              plugin_builder=_plugin_builder)
+                              plugin_builder=cb_plugin_builder)
 
     # Check for broken plug-ins
     broken = plugins.get_broken_plugins()
@@ -314,17 +247,10 @@ def load_walkers():
     return plugins.get_enabled_plugins()
 
 
-LEXER = generate_lexer()
-PARSER = generate_parser(LEXER, cache_id="parser")
-
-
-def lexQuery(query, lexer=LEXER):
-    return lexer.lex(query)
-
+PARSER = generate_parser()
+WALKERS = load_walkers()
 
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
-    return parser.parse(query)
-
-
-
+    print parse(query, parser)
+    # return parse(query, parser)
