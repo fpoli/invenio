@@ -21,13 +21,11 @@ import os
 import re
 import traceback
 
-from pypeg2 import Keyword, maybe_some, some, optional, parse, Symbol, attr
+from pypeg2 import Keyword, maybe_some, optional, parse, Symbol, attr
 
 
 from invenio.config import CFG_PYLIBDIR
 from invenio.pluginutils import PluginContainer
-
-import invenio.search_engine_spires_ast as ast
 
 
 def generate_lexer():
@@ -57,11 +55,11 @@ _ = optional(Whitespace)
 K = Keyword
 
 
-class Not(object):
+class Not(Keyword):
     grammar = [re.compile(r"not", re.I), K('-')]
 
 
-class And(object):
+class And(Keyword):
     grammar = [re.compile(r"and", re.I), K('+')]
 
 
@@ -74,62 +72,66 @@ class Word(Symbol):
 
 
 class SingleQuotedString(object):
-    grammar = re.compile(r"'[^']*'")
+    grammar = attr('value', re.compile(r"'[^']*'"))
 
 
 class DoubleQuotedString(object):
-    grammar = re.compile(r'"[^"]*"')
+    grammar = attr('value', re.compile(r'"[^"]*"'))
 
 
 class SlashQuotedString(object):
-    grammar = re.compile(r"/[^/]*/")
+    grammar = attr('value', re.compile(r"/[^/]*/"))
 
 
-class SimpleValue(ast.Leaf):
-    grammar = re.compile(r"[^\s\)\(]+")
+class SimpleValue(object):
+    grammar = attr('value', re.compile(r"[^\s\)\(]+"))
 
     def __init__(self, value):
         self.value = value
 
 
-class SimpleRangeValue(ast.UnaryOp):
-    grammar = [SimpleValue, DoubleQuotedString]
+class SimpleRangeValue(object):
+    grammar = attr('value', [SimpleValue, DoubleQuotedString])
 
     def __init__(self, value):
         self.value = value
 
 
 class RangeValue(object):
-    grammar = SimpleRangeValue, K('->'), SimpleRangeValue
+    grammar = attr('start', SimpleRangeValue), K(
+        '->'), attr('end', SimpleRangeValue)
 
 
 class Value(object):
-    grammar = [
+    grammar = attr('value', [
         SingleQuotedString,
         DoubleQuotedString,
         SlashQuotedString,
         RangeValue,
         SimpleValue,
-    ]
+    ])
 
     def __new__(cls, value):
         return value
 
 
-class Find(object):
-    grammar = re.compile(r"(find|fin|f)", re.I)
+class Find(Keyword):
+    regex = re.compile(r"(find|fin|f)", re.I)
 
 
 class SimpleSpiresValue(object):
-    grammar = [Value, K('('), K(')')]
+    grammar = attr('value', [Value, K('('), K(')')])
 
 
 class SpiresValue(object):
     grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
 
+    def __init__(self, args):
+        self.value = "".join(args)
+
 
 class SpiresSimpleQuery(object):
-    grammar = Word, _, SpiresValue
+    grammar = attr('keyword', Word), _, attr('value', SpiresValue)
 
 
 class SpiresNotQuery(object):
@@ -149,55 +151,61 @@ class SpiresOrQuery(object):
 
 
 class SpiresQuery(object):
-    grammar = [
+    grammar = attr('query', [
         SpiresNotQuery,
         SpiresParenthesizedQuery,
         SpiresAndQuery,
         SpiresOrQuery,
-        SpiresSimpleQuery]
+        SpiresSimpleQuery])
 
 SpiresNotQuery.grammar = (
     Not,
     [
-        (Whitespace, SpiresSimpleQuery),
-        SpiresParenthesizedQuery
+        (Whitespace, attr('query', SpiresSimpleQuery)),
+        attr('query', SpiresParenthesizedQuery)
     ]
 )
-SpiresParenthesizedQuery.grammar = K('('), _, SpiresQuery, _, K(')')
+SpiresParenthesizedQuery.grammar = (
+                                        K('('),
+                                        _,
+                                        attr('query', SpiresQuery),
+                                        _,
+                                        K(')')
+                                    )
 SpiresAndQuery.grammar = (
     [
-        SpiresParenthesizedQuery,
-        (SpiresSimpleQuery, Whitespace)
+        attr('left', SpiresParenthesizedQuery),
+        (attr('left', SpiresSimpleQuery), Whitespace)
     ],
     And,
     [
-        (Whitespace, SpiresQuery),
-        SpiresParenthesizedQuery
+        (Whitespace, attr('right', SpiresQuery)),
+        attr('right', SpiresParenthesizedQuery)
     ]
 )
 SpiresOrQuery.grammar = (
     [
-        SpiresParenthesizedQuery,
-        (SpiresSimpleQuery, Whitespace)
+        attr('left', SpiresParenthesizedQuery),
+        (attr('left', SpiresSimpleQuery), Whitespace)
     ],
     Or,
-    [(Whitespace, SpiresQuery), SpiresParenthesizedQuery]
+    [
+        (Whitespace, attr('right', SpiresQuery)),
+        attr('right', SpiresParenthesizedQuery)
+    ]
 )
 
 
 class ValueQuery(object):
-    grammar = Value
+    grammar = attr('value', Value)
 
 
 class KeywordQuery(object):
-    grammar = Word, _, K(':'), _, Value
+    grammar = attr('keyword', Word), _, K(':'), _, attr('value', Value)
 
 
 class SimpleQuery(object):
-    grammar = [KeywordQuery, ValueQuery]
-
-    def __new__(cls, query):
-        return query
+    grammar = attr('query', [KeywordQuery, ValueQuery])
 
 
 class NotQuery(object):
@@ -206,6 +214,7 @@ class NotQuery(object):
 
 class ParenthesizedQuery(object):
     pass
+
 
 class AndQuery(object):
     pass
@@ -233,8 +242,8 @@ class Query(object):
 NotQuery.grammar = (
     Not,
     [
-        (Whitespace, SimpleQuery),
-        ParenthesizedQuery
+        (Whitespace, attr('query', SimpleQuery)),
+        attr('query', ParenthesizedQuery)
     ]
 )
 ParenthesizedQuery.grammar = K('('), _, attr('query', Query), _, K(')')
@@ -270,7 +279,7 @@ OrQuery.grammar = (
 
 
 class FindQuery(object):
-    grammar = Find, Whitespace, SpiresQuery, _
+    grammar = Find, Whitespace, attr('query', SpiresQuery), _
 
 
 class Main(object):
