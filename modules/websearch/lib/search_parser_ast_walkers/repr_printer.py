@@ -17,7 +17,8 @@
 
 from invenio.visitor import make_visitor
 
-from invenio.search_engine_spires_parser import WordQuery
+from invenio.search_engine_spires_parser import (ValueQuery,
+                                                 AndQuery)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue,
@@ -74,9 +75,13 @@ class TreeRepr(object):
     def visit(self, node, left, right):
         return "find %s %s" % (left, right)
 
-    @visitor(WordQuery)
+    @visitor(ValueQuery)
     def visit(self, node):
         return "'%s'" % node.value
+
+    @visitor(AndQuery)
+    def visit(self, node, left, right):
+        return '(%s and %s)' % (left, right)
 
     # pylint: enable=W0612,E0102
 

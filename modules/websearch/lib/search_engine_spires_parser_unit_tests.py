@@ -24,7 +24,10 @@ from invenio.testutils import (make_test_suite,
                                InvenioTestCase,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
-                                                 load_walkers)
+                                                 load_walkers,
+                                                 ValueQuery,
+                                                 Word,
+                                                 ParenthesizedQuery)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
@@ -62,7 +65,7 @@ class TestParser(InvenioTestCase):
 
     queries = (
         ("bar",
-         Value('bar')),
+          ValueQuery(Word(u'bar'))),
         ("J. Ellis",
          AndOp(Value('J.'), Value('Ellis'))),
 
@@ -185,6 +188,12 @@ class TestParser(InvenioTestCase):
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
     )
 
+    queries = (
+        ("J. Ellis",
+         AndOp(Value('J.'), Value('Ellis'))),
+
+
+               )
 
 TEST_SUITE = make_test_suite(TestParser)
 
