@@ -233,14 +233,33 @@ SpiresOrQuery.grammar = (
     ]
 )
 
+class Query(UnaryRule):
+    pass
 
 class ValueQuery(UnaryRule):
     grammar = attr('op', Value)
 
 
 class KeywordQuery(BinaryRule):
-    grammar = attr('left', Word), omit(_, Literal(':'), _), attr('right', Value)
+    pass
 
+KeywordQuery.grammar = [
+                (
+                    attr('left', Word),
+                    omit(_, Literal(':'), _),
+                    attr('right', KeywordQuery)
+                ),
+                (
+                    attr('left', Word),
+                    omit(_, Literal(':'), _),
+                    attr('right', Value)
+                ),
+                (
+                    attr('left', Word),
+                    omit(_, Literal(':'), _),
+                    attr('right', Query)
+                ),
+            ]
 
 class SimpleQuery(UnaryRule):
     grammar = attr('op', [KeywordQuery, ValueQuery])
@@ -266,8 +285,7 @@ class OrQuery(BinaryRule):
     pass
 
 
-class Query(UnaryRule):
-    grammar = attr('op', [
+Query.grammar = attr('op', [
         NotQuery,
         AndQuery,
         OrQuery,
