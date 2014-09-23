@@ -222,7 +222,7 @@ class TestParser(InvenioTestCase):
         ("   find t quark   ",
          SpiresOp(Keyword('t'), Value('quark'))),
         ("find t quark ellis  ",
-         SpiresOp(Keyword('t'), Value('quark'))),
+         SpiresOp(Keyword('t'), Value('quark ellis'))),
         ("find t quark and a ellis",
          AndOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find t quark or a ellis",

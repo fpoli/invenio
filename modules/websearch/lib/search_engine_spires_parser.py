@@ -151,16 +151,23 @@ class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SimpleSpiresValue(UnaryRule):
+class SpiresValue(UnaryRule):
     grammar = attr('op', [Value, Literal('('), Literal(')')])
 
 
-class SpiresValue(ast.ListOp):
-    grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
-
-
 class SpiresSimpleQuery(BinaryRule):
-    grammar = attr('left', Word), omit(_), attr('right', SpiresValue)
+    grammar = [
+                (
+                    attr('left', Word),
+                    omit(_, Literal(':'), _),
+                    attr('right', SpiresValue)
+                ),
+                (
+                    attr('left', Word),
+                    omit(_),
+                    attr('right', SpiresValue)
+                ),
+            ]
 
 
 class SpiresNotQuery(UnaryRule):

@@ -59,7 +59,11 @@ class UnaryOp(object):
 class ListOp(object):
 
     def __init__(self, children):
-        self.children = children
+        try:
+            iter(children)
+            self.children = children
+        except TypeError:
+            self.children = [children]
 
     def accept(self, visitor):
         #print 'list op', repr(self.children)
