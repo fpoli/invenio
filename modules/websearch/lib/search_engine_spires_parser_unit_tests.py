@@ -71,7 +71,7 @@ class TestParser(InvenioTestCase):
         ("J. Ellis",
          AndOp(ValueQuery(Value('J.')), ValueQuery(Value('Ellis')))),
         ("$e^{+}e^{-}$",
-         ValueQuery(Value('$e^{+}e^{-}$')),
+         ValueQuery(Value('$e^{+}e^{-}$'))),
 
         # Basic keyword:value
         ("foo:bar",
@@ -193,8 +193,8 @@ class TestParser(InvenioTestCase):
                   AndOp(KeywordOp(Keyword('foo'), Value('bar')),
                         KeywordOp(Keyword('foo'), Value('bar'))))),
         ("aaa +bbb -ccc +ddd",
-         AndOp(ValueQuery(Value('aaa'))
-               AndOp(ValueQuery(Value('bbb'))
+         AndOp(ValueQuery(Value('aaa')),
+               AndOp(ValueQuery(Value('bbb')),
                      NotOp(AndOp(ValueQuery(Value('ccc')),
                                  ValueQuery(Value('ddd'))
         ))))),
@@ -244,7 +244,7 @@ class TestParser(InvenioTestCase):
                           SpiresOp(Keyword('primarch'), Value('hep-ph')))))),
 
         ("find texkey Allison:1980vw",
-         SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))
+         SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))),
 
         # TODO: create a GreaterOp
         # ("find date > 1984",
@@ -262,7 +262,7 @@ class TestParser(InvenioTestCase):
 
         # This will be difficult without knowing the list of second-order keywords
         ("find refersto a ellis",
-         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis'))),
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
         
     )
 
