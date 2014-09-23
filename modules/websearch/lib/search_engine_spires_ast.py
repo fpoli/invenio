@@ -115,6 +115,10 @@ class SpiresOp(BinaryOp):
     pass
 
 
+class ValueQuery(UnaryOp):
+    pass
+
+
 class Keyword(Leaf):
     pass
 
@@ -132,7 +136,4 @@ class DoubleQuotedValue(Leaf):
 
 
 class RegexValue(Leaf):
-    pass
-
-class ValueQuery(UnaryOp):
     pass
