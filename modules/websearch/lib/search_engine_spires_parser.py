@@ -21,7 +21,8 @@ import os
 import re
 import traceback
 
-from pypeg2 import Keyword, maybe_some, optional, parse, Symbol, attr, Literal
+from pypeg2 import (Keyword, maybe_some, optional, parse, Symbol, attr,
+                    Literal, omit, some)
 
 
 from invenio.config import CFG_PYLIBDIR
@@ -48,10 +49,18 @@ def generate_lexer(lg):
 # pylint: disable=C0321,R0903
 
 
-class UnaryOp(ast.UnaryOp):
-    def __init__(self, args):
-        # Also checks that len(args) == 1
-        self.op, = args
+class LeafRule(ast.Leaf):
+    def __init__(self):
+        pass
+
+
+class UnaryRule(ast.UnaryOp):
+    def __init__(self):
+        pass
+
+class BinaryRule(ast.BinaryOp):
+    def __init__(self):
+        pass
 
 
 class Whitespace(object):
@@ -61,68 +70,74 @@ class Whitespace(object):
         self.value = value
 
 _ = optional(Whitespace)
-K = Keyword
 
 
 class Not(object):
-    grammar = [re.compile(r"not", re.I), K('-')]
+    grammar = omit([re.compile(r"not", re.I), Literal('-')])
 
 
 class And(object):
-    grammar = [re.compile(r"and", re.I), K('+')]
+    grammar = omit([re.compile(r"and", re.I), Literal('+')])
 
 
 class Or(object):
-    grammar = [re.compile(r"or", re.I), K('|')]
+    grammar = omit([re.compile(r"or", re.I), Literal('|')])
 
 
-class Word(Symbol):
-    regex = re.compile(r"[\w\d]+")
+class Word(LeafRule):
+    grammar = attr('value', re.compile(r"[\w\d]+"))
 
 
-class SingleQuotedString(UnaryOp):
-    grammar = re.compile(r"'[^']*'")
+class SingleQuotedString(LeafRule):
+    grammar = Literal("'"), attr('value', re.compile(r"[^']*")), Literal("'")
 
 
-class DoubleQuotedString(UnaryOp):
-    grammar = re.compile(r'"[^"]*"')
+class DoubleQuotedString(LeafRule):
+    grammar = Literal('"'), attr('value', re.compile(r'[^"]*')), Literal('"')
 
 
-class SlashQuotedString(UnaryOp):
-    grammar = re.compile(r"/[^/]*/")
+class SlashQuotedString(LeafRule):
+    grammar = Literal('/'), attr('value', re.compile(r"[^/]*")), Literal('/')
 
 
-class SimpleValue(UnaryOp):
-    grammar = re.compile(r"[^\s\)\(]+")
+class SimpleValue(LeafRule):
+    grammar = some([re.compile(r'\('), re.compile(r'\)'), re.compile(r"[^\s\)\(:]+")])
+
+    def __init__(self, values):
+        super(SimpleValue, self).__init__()
+        self.value = "".join(values)
 
 
-class SimpleRangeValue(UnaryOp):
-    grammar = [SimpleValue, DoubleQuotedString]
+class SimpleRangeValue(LeafRule):
+    grammar = attr('value', re.compile(r"([^\s\)\(-]|-+[^\s\)\(>])+"))
+
+class RangeValue(UnaryRule):
+    grammar = attr('op', [SimpleRangeValue, DoubleQuotedString])
 
 
-class RangeValue(ast.BinaryOp):
+class RangeOp(BinaryRule):
     grammar = (
-                attr('left', SimpleRangeValue),
-                K('->'),
-                attr('right', SimpleRangeValue)
+                attr('left', RangeValue),
+                Literal('->'),
+                attr('right', RangeValue)
               )
 
 
-class Value(UnaryOp):
-    grammar = [
+class Value(UnaryRule):
+    grammar = attr('op', [
         SingleQuotedString,
         DoubleQuotedString,
         SlashQuotedString,
-        RangeValue,
+        RangeOp,
         SimpleValue,
-    ]
+    ])
 
 
 class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SimpleSpiresValue(UnaryOp):
+class SimpleSpiresValue(UnaryRule):
     grammar = attr('op', [Value, Literal('('), Literal(')')])
 
 
@@ -130,28 +145,28 @@ class SpiresValue(ast.ListOp):
     grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
 
 
-class SpiresSimpleQuery(ast.BinaryOp):
+class SpiresSimpleQuery(BinaryRule):
     grammar = attr('left', Word), _, attr('right', SpiresValue)
 
 
-class SpiresNotQuery(UnaryOp):
+class SpiresNotQuery(UnaryRule):
     pass
 
 
-class SpiresParenthesizedQuery(UnaryOp):
+class SpiresParenthesizedQuery(UnaryRule):
     pass
 
 
-class SpiresAndQuery(ast.BinaryOp):
+class SpiresAndQuery(BinaryRule):
     pass
 
 
-class SpiresOrQuery(ast.BinaryOp):
+class SpiresOrQuery(BinaryRule):
     pass
 
 
-class SpiresQuery(UnaryOp):
-    grammar = attr('query', [
+class SpiresQuery(UnaryRule):
+    grammar = attr('op', [
         SpiresNotQuery,
         SpiresParenthesizedQuery,
         SpiresAndQuery,
@@ -166,11 +181,11 @@ SpiresNotQuery.grammar = (
     ]
 )
 SpiresParenthesizedQuery.grammar = (
-                                        K('('),
+                                        Literal('('),
                                         _,
                                         attr('op', SpiresQuery),
                                         _,
-                                        K(')')
+                                        Literal(')')
                                     )
 SpiresAndQuery.grammar = (
     [
@@ -196,40 +211,40 @@ SpiresOrQuery.grammar = (
 )
 
 
-class ValueQuery(object):
-    grammar = attr('value', Value)
+class ValueQuery(UnaryRule):
+    grammar = attr('op', Value)
 
 
-class KeywordQuery(object):
-    grammar = attr('keyword', Word), _, K(':'), _, attr('value', Value)
+class KeywordQuery(BinaryRule):
+    grammar = attr('left', Word), omit(_, Literal(':'), _), attr('right', Value)
 
 
-class SimpleQuery(object):
-    grammar = attr('query', [KeywordQuery, ValueQuery])
+class SimpleQuery(UnaryRule):
+    grammar = attr('op', [KeywordQuery, ValueQuery])
 
 
-class NotQuery(object):
+class NotQuery(UnaryRule):
     pass
 
 
-class ParenthesizedQuery(object):
+class ParenthesizedQuery(UnaryRule):
     pass
 
 
-class AndQuery(object):
+class AndQuery(BinaryRule):
     pass
 
 
-class ImplicitAndQuery(object):
+class ImplicitAndQuery(BinaryRule):
     pass
 
 
-class OrQuery(object):
+class OrQuery(BinaryRule):
     pass
 
 
-class Query(object):
-    grammar = attr('query', [
+class Query(UnaryRule):
+    grammar = attr('op', [
         NotQuery,
         ParenthesizedQuery,
         AndQuery,
@@ -239,55 +254,73 @@ class Query(object):
     ])
 
 
-NotQuery.grammar = (
-    Not,
-    [
-        (Whitespace, attr('query', SimpleQuery)),
-        attr('query', ParenthesizedQuery)
-    ]
-)
-ParenthesizedQuery.grammar = K('('), _, attr('query', Query), _, K(')')
-AndQuery.grammar = (
-    [
-        attr('left', ParenthesizedQuery),
-        (attr('left', SimpleQuery), Whitespace)
-    ],
-    And,
-    [
-        (Whitespace, attr('right', Query)),
-        attr('right', ParenthesizedQuery)
-    ]
-)
+NotQuery.grammar = [
+    (
+        omit(Not),
+        [
+            (omit(Whitespace), attr('op', SimpleQuery)),
+            attr('op', ParenthesizedQuery),
+        ],
+    ),
+    (
+        omit(Literal('-')),
+        attr('op', SimpleQuery),
+    ),
+]
+ParenthesizedQuery.grammar = Literal('('), _, attr('op', Query), _, Literal(')')
+AndQuery.grammar = [
+    (
+        [
+            attr('left', ParenthesizedQuery),
+            (attr('left', SimpleQuery), omit(Whitespace)),
+        ],
+        omit(And),
+        [
+            (omit(Whitespace), attr('right', Query)),
+            attr('right', ParenthesizedQuery),
+        ],
+    ),
+    (
+        omit(Literal('+')),
+        attr('right', Query),
+    ),
+]
 ImplicitAndQuery.grammar = (
     [
         attr('left', ParenthesizedQuery),
-        (attr('left', SimpleQuery), Whitespace)
+        (attr('left', SimpleQuery), omit(Whitespace)),
     ],
     attr('right', Query),
 )
-OrQuery.grammar = (
-    [
-        attr('left', ParenthesizedQuery),
-        (attr('left', SimpleQuery), Whitespace)
-    ],
-    Or,
-    [
-        (Whitespace, attr('right', Query)),
-        attr('right', ParenthesizedQuery)
-    ]
-)
+OrQuery.grammar = [
+    (
+        [
+            attr('left', ParenthesizedQuery),
+            (attr('left', SimpleQuery), omit(Whitespace)),
+        ],
+        omit(Or),
+        [
+            (omit(Whitespace), attr('right', Query)),
+            attr('right', ParenthesizedQuery),
+        ],
+    ),
+    (
+        omit(Literal('|')),
+        attr('right', Query),
+    ),
+]
 
 
-class FindQuery(UnaryOp):
-    grammar = Find, Whitespace, attr('query', SpiresQuery), _
+class FindQuery(UnaryRule):
+    grammar = Find, Whitespace, attr('op', SpiresQuery), _
 
     def __init__(self, args):
         _, _, op, _ = args
         super(FindQuery, self).__init__(op)
 
 
-class Main(UnaryOp):
-    grammar = _, [Query, FindQuery], _
+class Main(UnaryRule):
+    grammar = _, attr('op', [Query, FindQuery]), _
 
 
 # pylint: enable=C0321,R0903
@@ -320,7 +353,6 @@ def load_walkers():
 
 
 PARSER = generate_parser()
-WALKERS = load_walkers()
 
 
 def parseQuery(query, parser=PARSER):

@@ -20,7 +20,7 @@ from invenio.visitor import make_visitor
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue,
-                                              DoubleQuotedValue,
+                                              DoubleQuotedValue, ValueQuery,
                                               RegexValue, RangeOp, SpiresOp)
 
 
@@ -52,6 +52,10 @@ class TreeRepr(object):
     @visitor(Value)
     def visit(self, node):
         return "'%s'" % node.value
+
+    @visitor(ValueQuery)
+    def visit(self, node, query):
+        return query
 
     @visitor(SingleQuotedValue)
     def visit(self, node):
