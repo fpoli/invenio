@@ -129,7 +129,7 @@ class SimpleRangeValue(LeafRule):
     grammar = attr('value', re.compile(r"([^\s\)\(-]|-+[^\s\)\(>])+"))
 
 class RangeValue(UnaryRule):
-    grammar = attr('op', [SimpleRangeValue, DoubleQuotedString])
+    grammar = attr('op', [DoubleQuotedString, SimpleRangeValue])
 
 
 class RangeOp(BinaryRule):
@@ -142,10 +142,10 @@ class RangeOp(BinaryRule):
 
 class Value(UnaryRule):
     grammar = attr('op', [
+        RangeOp,
         SingleQuotedString,
         DoubleQuotedString,
         SlashQuotedString,
-        RangeOp,
         SimpleValue,
     ])
 
