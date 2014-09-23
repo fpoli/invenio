@@ -191,10 +191,8 @@ class TestParser(InvenioTestCase):
     )
 
     # queries = (
-    #     ("J. Ellis",
-    #      AndOp(Value('J.'), Value('Ellis'))),
-
-
+    #     ("(foo:bar) or foo:bar",
+    #      OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
     #            )
 
 TEST_SUITE = make_test_suite(TestParser)
