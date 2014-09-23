@@ -63,11 +63,9 @@ class BinaryRule(ast.BinaryOp):
         pass
 
 
-class Whitespace(object):
-    grammar = re.compile(r"\s+")
+class Whitespace(LeafRule):
+    grammar = attr('value', re.compile(r"\s+"))
 
-    def __init__(self, value):
-        self.value = value
 
 _ = optional(Whitespace)
 
