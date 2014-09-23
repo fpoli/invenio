@@ -184,9 +184,9 @@ class SpiresOrQuery(BinaryRule):
 
 class SpiresQuery(UnaryRule):
     grammar = attr('op', [
+        SpiresNotQuery,
         SpiresAndQuery,
         SpiresOrQuery,
-        SpiresNotQuery,
         SpiresParenthesizedQuery,
         SpiresSimpleQuery])
 
@@ -268,9 +268,9 @@ class OrQuery(BinaryRule):
 
 class Query(UnaryRule):
     grammar = attr('op', [
+        NotQuery,
         AndQuery,
         OrQuery,
-        NotQuery,
         ImplicitAndQuery,
         ParenthesizedQuery,
         SimpleQuery
