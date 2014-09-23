@@ -151,20 +151,11 @@ class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SimpleSpiresValue(UnaryRule):
+class SpiresValue(UnaryRule):
     grammar = attr('op', [Value, Literal('('), Literal(')')])
 
 
-class SpiresValue(ast.ListOp):
-    pass
-
-SpiresValue.grammar = [
-                        (SimpleSpiresValue, Whitespace, SpiresValue,),
-                        (SimpleSpiresValue,),
-                      ]
-
-
-class SpiresSimpleQuery(BinaryRule):
+class SpiresKeywordQuery(BinaryRule):
     grammar = [
                 (
                     attr('left', Word),
@@ -177,6 +168,14 @@ class SpiresSimpleQuery(BinaryRule):
                     attr('right', SpiresValue)
                 ),
             ]
+
+
+class SpiresValueQuery(UnaryRule):
+    grammar = attr('op', SpiresValue)
+
+
+class SpiresSimpleQuery(UnaryRule):
+    grammar = attr('op', [SpiresKeywordQuery, SpiresValueQuery])
 
 
 class SpiresNotQuery(UnaryRule):
@@ -194,6 +193,9 @@ class SpiresAndQuery(BinaryRule):
 class SpiresOrQuery(BinaryRule):
     pass
 
+class SpiresExtendedSimpleQuery(BinaryRule):
+    pass
+
 
 class SpiresQuery(UnaryRule):
     grammar = attr('op', [
@@ -201,6 +203,7 @@ class SpiresQuery(UnaryRule):
         SpiresAndQuery,
         SpiresOrQuery,
         SpiresParenthesizedQuery,
+        SpiresExtendedSimpleQuery,
         SpiresSimpleQuery])
 
 SpiresNotQuery.grammar = [
@@ -245,6 +248,11 @@ SpiresOrQuery.grammar = (
         attr('right', SpiresParenthesizedQuery)
     ]
 )
+SpiresExtendedSimpleQuery.grammar = (
+    attr('left', SpiresSimpleQuery),
+    attr('right', SpiresQuery),
+)
+
 
 class Query(UnaryRule):
     pass

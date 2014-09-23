@@ -70,7 +70,7 @@ class ListOp(object):
         return visitor.visit(self, [c.accept(visitor) for c in self.children])
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.op == other.op
+        return type(self) == type(other) and self.children == other.children
 
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.children))
