@@ -184,19 +184,25 @@ class SpiresOrQuery(BinaryRule):
 
 class SpiresQuery(UnaryRule):
     grammar = attr('op', [
-        SpiresNotQuery,
-        SpiresParenthesizedQuery,
         SpiresAndQuery,
         SpiresOrQuery,
+        SpiresNotQuery,
+        SpiresParenthesizedQuery,
         SpiresSimpleQuery])
 
-SpiresNotQuery.grammar = (
-    Not,
-    [
-        (Whitespace, attr('op', SpiresSimpleQuery)),
-        attr('op', SpiresParenthesizedQuery)
-    ]
-)
+SpiresNotQuery.grammar = [
+    (
+        omit(Not),
+        [
+            (omit(Whitespace), attr('op', SpiresSimpleQuery)),
+            (omit(_), attr('op', SpiresParenthesizedQuery)),
+        ],
+    ),
+    (
+        omit(Literal('-')),
+        attr('op', SpiresQuery),
+    )
+]
 SpiresParenthesizedQuery.grammar = (
                                         Literal('('),
                                         _,
@@ -275,16 +281,16 @@ NotQuery.grammar = [
     (
         omit(Not),
         [
-            (omit(Whitespace), attr('op', SimpleQuery)),
+            (omit(Whitespace), attr('op', Query)),
             (omit(_), attr('op', ParenthesizedQuery)),
         ],
     ),
     (
         omit(Literal('-')),
-        attr('op', SimpleQuery),
+        attr('op', Query),
     ),
 ]
-ParenthesizedQuery.grammar = Literal('('), omit(_), attr('op', Query), omit(_), Literal(')')
+ParenthesizedQuery.grammar = omit(Literal('('), _), attr('op', Query), omit(_, Literal(')'))
 AndQuery.grammar = [
     (
         [
