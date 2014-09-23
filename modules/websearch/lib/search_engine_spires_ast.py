@@ -25,7 +25,7 @@ class BinaryOp(object):
         self.right = right
 
     def accept(self, visitor):
-        print 'binary op', repr(self)
+        #print 'binary op', repr(self)
         return visitor.visit(self,
                              self.left.accept(visitor),
                              self.right.accept(visitor))
@@ -46,7 +46,7 @@ class UnaryOp(object):
         self.op = op
 
     def accept(self, visitor):
-        print 'op', repr(self.op)
+        #print 'op', repr(self.op)
         return visitor.visit(self, self.op.accept(visitor))
 
     def __eq__(self, other):
@@ -62,7 +62,7 @@ class ListOp(object):
         self.children = children
 
     def accept(self, visitor):
-        print 'list op', repr(self.children)
+        #print 'list op', repr(self.children)
         return visitor.visit(self, [c.accept(visitor) for c in self.children])
 
     def __eq__(self, other):
@@ -78,7 +78,7 @@ class Leaf(object):
         self.value = value
 
     def accept(self, visitor):
-        print 'leaf', repr(self)
+        #print 'leaf', repr(self)
         return visitor.visit(self)
 
     def __eq__(self, other):

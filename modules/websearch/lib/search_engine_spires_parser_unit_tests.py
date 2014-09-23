@@ -42,8 +42,8 @@ def generate_parser_test(query, expected):
         converter = WALKERS['pypeg_to_ast_converter']()
         tree = tree.accept(converter)
         printer = WALKERS['repr_printer']()
-        print 'tree', tree.accept(printer)
-        print 'expected', expected.accept(printer)
+        print 'parsed tree  :', tree.accept(printer)
+        print 'expected tree:', expected.accept(printer)
         self.assertEqual(tree, expected)
     return func
 

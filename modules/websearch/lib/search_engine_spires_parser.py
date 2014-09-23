@@ -115,7 +115,6 @@ class SimpleValueUnit(LeafRule):
         if isinstance(args, basestring):
             self.value = args
         else:
-            print 'args', repr(args)
             self.value = args[0] + args[1].value + args[2]
 
 

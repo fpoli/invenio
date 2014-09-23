@@ -80,7 +80,6 @@ class PypegConverter(object):
 
     @visitor(parser.SimpleSpiresValue)
     def visit(self, node, child):
-        print 'child', child
         return child
 
     @visitor(parser.SpiresValue)
