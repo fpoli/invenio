@@ -56,6 +56,22 @@ class UnaryOp(object):
         return "%s(%s)" % (self.__class__.__name__, repr(self.op))
 
 
+class ListOp(object):
+
+    def __init__(self, children):
+        self.children = children
+
+    def accept(self, visitor):
+        print 'list op', repr(self.children)
+        return visitor.visit(self, [c.accept(visitor) for c in self.children])
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.op == other.op
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.op))
+
+
 class Leaf(object):
 
     def __init__(self, value):

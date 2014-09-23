@@ -17,8 +17,9 @@
 
 from invenio.visitor import make_visitor
 
-from invenio.search_engine_spires_parser as parser
-from inastsearch_engine_spires_ast as ast
+from invenio import search_engine_spires_ast as ast
+from invenio import search_engine_spires_parser as parser
+
 
 class PypegConverter(object):
     visitor = make_visitor()
@@ -62,10 +63,14 @@ class PypegConverter(object):
         return ast.Value(node.value)
 
     @visitor(parser.SimpleRangeValue)
+    def visit(self, node):
+        return ast.Value(node.value)
+
+    @visitor(parser.RangeValue)
     def visit(self, node, child):
         return child
 
-    @visitor(parser.RangeValue)
+    @visitor(parser.RangeOp)
     def visit(self, node, left, right):
         return ast.RangeOp(left, right)
 
@@ -75,11 +80,11 @@ class PypegConverter(object):
 
     @visitor(parser.SimpleSpiresValue)
     def visit(self, node, children):
-        return ast.Value("".join([c.value for c in children])
+        return ast.Value("".join([c.value for c in children]))
 
     @visitor(parser.SpiresValue)
     def visit(self, node, children):
-        return ast.Value("".join([c.value for c in children])
+        return ast.Value("".join([c.value for c in children]))
 
     @visitor(parser.SpiresSimpleQuery)
     def visit(self, node, keyword, value):

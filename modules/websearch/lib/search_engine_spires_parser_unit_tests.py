@@ -24,24 +24,24 @@ from invenio.testutils import (make_test_suite,
                                InvenioTestCase,
                                nottest)
 from invenio.search_engine_spires_parser import (parseQuery,
-                                                 load_walkers,
-                                                 ValueQuery,
-                                                 Word,
-                                                 ParenthesizedQuery,
-                                                 AndQuery,
-                                                 SimpleValue)
+                                                 load_walkers)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
-                                              DoubleQuotedValue,
+                                              DoubleQuotedValue, ValueQuery,
                                               RegexValue, RangeOp, SpiresOp)
+
+
+WALKERS = load_walkers()
 
 
 @nottest
 def generate_parser_test(query, expected):
     def func(self):
         tree = parseQuery(query)
-        printer = load_walkers()['repr_printer']()
+        converter = WALKERS['pypeg_to_ast_converter']()
+        tree = tree.accept(converter)
+        printer = WALKERS['repr_printer']()
         print 'tree', tree.accept(printer)
         print 'expected', expected.accept(printer)
         self.assertEqual(tree, expected)
@@ -67,9 +67,9 @@ class TestParser(InvenioTestCase):
 
     queries = (
         ("bar",
-          ValueQuery(u'bar')),
+          ValueQuery(Value(u'bar'))),
         ("J. Ellis",
-         AndOp(Value('J.'), Value('Ellis'))),
+         AndOp(ValueQuery(Value('J.')), ValueQuery(Value('Ellis')))),
 
         # Basic keyword:value
         ("foo:bar",
@@ -190,12 +190,12 @@ class TestParser(InvenioTestCase):
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
     )
 
-    queries = (
-        ("J. Ellis",
-         AndQuery(ValueQuery(SimpleValue('J.')), ValueQuery(SimpleValue('Ellis')))),
+    # queries = (
+    #     ("J. Ellis",
+    #      AndOp(Value('J.'), Value('Ellis'))),
 
 
-               )
+    #            )
 
 TEST_SUITE = make_test_suite(TestParser)
 
