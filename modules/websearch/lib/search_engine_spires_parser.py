@@ -151,8 +151,17 @@ class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SpiresValue(UnaryRule):
+class SimpleSpiresValue(UnaryRule):
     grammar = attr('op', [Value, Literal('('), Literal(')')])
+
+
+class SpiresValue(ast.ListOp):
+    pass
+
+SpiresValue.grammar = [
+                        (SimpleSpiresValue, Whitespace, SpiresValue,),
+                        (SimpleSpiresValue,),
+                      ]
 
 
 class SpiresSimpleQuery(BinaryRule):
