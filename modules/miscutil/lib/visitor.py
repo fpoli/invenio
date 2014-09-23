@@ -28,10 +28,6 @@ def make_visitor():
         def _visitor_impl(self, arg, *args, **kwargs):
             """Actual visitor method implementation."""
             method = _methods[type(arg)]
-            print 'arg', repr(arg)
-            if args:
-                print 'args', type(args[0])
-            print 'kwargs', repr(kwargs)
             return method(self, arg, *args, **kwargs)
 
         def decorator(fn):

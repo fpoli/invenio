@@ -21,14 +21,16 @@ import os
 import re
 import traceback
 
-from pypeg2 import Keyword, maybe_some, optional, parse, Symbol, attr
+from pypeg2 import Keyword, maybe_some, optional, parse, Symbol, attr, Literal
 
 
 from invenio.config import CFG_PYLIBDIR
 from invenio.pluginutils import PluginContainer
 
+import invenio.search_engine_spires_ast as ast
 
-def generate_lexer():
+
+def generate_lexer(lg):
     # lg.add(")", r"\)(?=\)*(\s|$))")
     lg.add("<=", r"<=")
     lg.add(">=", r">=")
@@ -42,7 +44,14 @@ def generate_lexer():
     lg.add("*", r"\*")
     lg.add("-", r"-")
 
-    # pylint: disable=C0321,R0903
+
+# pylint: disable=C0321,R0903
+
+
+class UnaryOp(ast.UnaryOp):
+    def __init__(self, args):
+        # Also checks that len(args) == 1
+        self.op, = args
 
 
 class Whitespace(object):
@@ -55,11 +64,11 @@ _ = optional(Whitespace)
 K = Keyword
 
 
-class Not(Keyword):
+class Not(object):
     grammar = [re.compile(r"not", re.I), K('-')]
 
 
-class And(Keyword):
+class And(object):
     grammar = [re.compile(r"and", re.I), K('+')]
 
 
@@ -71,86 +80,77 @@ class Word(Symbol):
     regex = re.compile(r"[\w\d]+")
 
 
-class SingleQuotedString(object):
-    grammar = attr('value', re.compile(r"'[^']*'"))
+class SingleQuotedString(UnaryOp):
+    grammar = re.compile(r"'[^']*'")
 
 
-class DoubleQuotedString(object):
-    grammar = attr('value', re.compile(r'"[^"]*"'))
+class DoubleQuotedString(UnaryOp):
+    grammar = re.compile(r'"[^"]*"')
 
 
-class SlashQuotedString(object):
-    grammar = attr('value', re.compile(r"/[^/]*/"))
+class SlashQuotedString(UnaryOp):
+    grammar = re.compile(r"/[^/]*/")
 
 
-class SimpleValue(object):
-    grammar = attr('value', re.compile(r"[^\s\)\(]+"))
-
-    def __init__(self, value):
-        self.value = value
+class SimpleValue(UnaryOp):
+    grammar = re.compile(r"[^\s\)\(]+")
 
 
-class SimpleRangeValue(object):
-    grammar = attr('value', [SimpleValue, DoubleQuotedString])
-
-    def __init__(self, value):
-        self.value = value
+class SimpleRangeValue(UnaryOp):
+    grammar = [SimpleValue, DoubleQuotedString]
 
 
-class RangeValue(object):
-    grammar = attr('start', SimpleRangeValue), K(
-        '->'), attr('end', SimpleRangeValue)
+class RangeValue(ast.BinaryOp):
+    grammar = (
+                attr('left', SimpleRangeValue),
+                K('->'),
+                attr('right', SimpleRangeValue)
+              )
 
 
-class Value(object):
-    grammar = attr('value', [
+class Value(UnaryOp):
+    grammar = [
         SingleQuotedString,
         DoubleQuotedString,
         SlashQuotedString,
         RangeValue,
         SimpleValue,
-    ])
-
-    def __new__(cls, value):
-        return value
+    ]
 
 
 class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SimpleSpiresValue(object):
-    grammar = attr('value', [Value, K('('), K(')')])
+class SimpleSpiresValue(UnaryOp):
+    grammar = attr('op', [Value, Literal('('), Literal(')')])
 
 
-class SpiresValue(object):
+class SpiresValue(ast.ListOp):
     grammar = maybe_some(SimpleSpiresValue, Whitespace), SimpleSpiresValue
 
-    def __init__(self, args):
-        self.value = "".join(args)
+
+class SpiresSimpleQuery(ast.BinaryOp):
+    grammar = attr('left', Word), _, attr('right', SpiresValue)
 
 
-class SpiresSimpleQuery(object):
-    grammar = attr('keyword', Word), _, attr('value', SpiresValue)
-
-
-class SpiresNotQuery(object):
+class SpiresNotQuery(UnaryOp):
     pass
 
 
-class SpiresParenthesizedQuery(object):
+class SpiresParenthesizedQuery(UnaryOp):
     pass
 
 
-class SpiresAndQuery(object):
+class SpiresAndQuery(ast.BinaryOp):
     pass
 
 
-class SpiresOrQuery(object):
+class SpiresOrQuery(ast.BinaryOp):
     pass
 
 
-class SpiresQuery(object):
+class SpiresQuery(UnaryOp):
     grammar = attr('query', [
         SpiresNotQuery,
         SpiresParenthesizedQuery,
@@ -161,14 +161,14 @@ class SpiresQuery(object):
 SpiresNotQuery.grammar = (
     Not,
     [
-        (Whitespace, attr('query', SpiresSimpleQuery)),
-        attr('query', SpiresParenthesizedQuery)
+        (Whitespace, attr('op', SpiresSimpleQuery)),
+        attr('op', SpiresParenthesizedQuery)
     ]
 )
 SpiresParenthesizedQuery.grammar = (
                                         K('('),
                                         _,
-                                        attr('query', SpiresQuery),
+                                        attr('op', SpiresQuery),
                                         _,
                                         K(')')
                                     )
@@ -278,12 +278,16 @@ OrQuery.grammar = (
 )
 
 
-class FindQuery(object):
+class FindQuery(UnaryOp):
     grammar = Find, Whitespace, attr('query', SpiresQuery), _
 
+    def __init__(self, args):
+        _, _, op, _ = args
+        super(FindQuery, self).__init__(op)
 
-class Main(object):
-    grammar = _, attr('query', [Query, FindQuery]), _
+
+class Main(UnaryOp):
+    grammar = _, [Query, FindQuery], _
 
 
 # pylint: enable=C0321,R0903
@@ -321,4 +325,4 @@ WALKERS = load_walkers()
 
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
-    return parse(query, parser, whitespace="")[0]
+    return parse(query, parser, whitespace="")
