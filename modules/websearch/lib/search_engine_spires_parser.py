@@ -21,7 +21,7 @@ import os
 import re
 import traceback
 
-from pypeg2 import Keyword, maybe_some, some, optional, parse, Symbol
+from pypeg2 import Keyword, maybe_some, some, optional, parse, Symbol, attr
 
 
 from invenio.config import CFG_PYLIBDIR
@@ -185,7 +185,7 @@ SpiresOrQuery.grammar = (
 )
 
 
-class ValueQuery(ast.UnaryOp):
+class ValueQuery(object):
     grammar = Value
 
 
@@ -205,22 +205,14 @@ class NotQuery(object):
 
 
 class ParenthesizedQuery(object):
+    pass
 
-    def __new__(cls, query):
-        return query
-
-
-class AndQuery(ast.BinaryOp):
-
-    def __init__(self, args):
-        left, _, right = args
-        super(AndQuery, self).__init__(left, right)
+class AndQuery(object):
+    pass
 
 
 class ImplicitAndQuery(object):
-
-    def __new__(cls, args):
-        return AndQuery(args)
+    pass
 
 
 class OrQuery(object):
@@ -228,17 +220,14 @@ class OrQuery(object):
 
 
 class Query(object):
-    grammar = [
+    grammar = attr('query', [
         NotQuery,
         ParenthesizedQuery,
         AndQuery,
         OrQuery,
         ImplicitAndQuery,
         SimpleQuery
-    ]
-
-    def __new__(cls, query):
-        return query
+    ])
 
 
 NotQuery.grammar = (
@@ -248,37 +237,34 @@ NotQuery.grammar = (
         ParenthesizedQuery
     ]
 )
-ParenthesizedQuery.grammar = K('('), _, Query, _, K(')')
+ParenthesizedQuery.grammar = K('('), _, attr('query', Query), _, K(')')
 AndQuery.grammar = (
     [
-        ParenthesizedQuery,
-        (SimpleQuery, Whitespace)
+        attr('left', ParenthesizedQuery),
+        (attr('left', SimpleQuery), Whitespace)
     ],
     And,
     [
-        (Whitespace, Query),
-        ParenthesizedQuery
+        (Whitespace, attr('right', Query)),
+        attr('right', ParenthesizedQuery)
     ]
 )
 ImplicitAndQuery.grammar = (
     [
-        ParenthesizedQuery,
-        (SimpleQuery, Whitespace)
+        attr('left', ParenthesizedQuery),
+        (attr('left', SimpleQuery), Whitespace)
     ],
-    [
-        Query,
-        ParenthesizedQuery
-    ]
+    attr('right', Query),
 )
 OrQuery.grammar = (
     [
-        ParenthesizedQuery,
-        (SimpleQuery, Whitespace)
+        attr('left', ParenthesizedQuery),
+        (attr('left', SimpleQuery), Whitespace)
     ],
     Or,
     [
-        (Whitespace, Query),
-        ParenthesizedQuery
+        (Whitespace, attr('right', Query)),
+        attr('right', ParenthesizedQuery)
     ]
 )
 
@@ -288,10 +274,8 @@ class FindQuery(object):
 
 
 class Main(object):
-    grammar = _, [Query, FindQuery], _
+    grammar = _, attr('query', [Query, FindQuery]), _
 
-    def __new__(cls, query):
-        return query
 
 # pylint: enable=C0321,R0903
 

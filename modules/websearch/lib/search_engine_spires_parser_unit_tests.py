@@ -27,7 +27,9 @@ from invenio.search_engine_spires_parser import (parseQuery,
                                                  load_walkers,
                                                  ValueQuery,
                                                  Word,
-                                                 ParenthesizedQuery)
+                                                 ParenthesizedQuery,
+                                                 AndQuery,
+                                                 SimpleValue)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
@@ -65,7 +67,7 @@ class TestParser(InvenioTestCase):
 
     queries = (
         ("bar",
-          ValueQuery(Word(u'bar'))),
+          ValueQuery(u'bar')),
         ("J. Ellis",
          AndOp(Value('J.'), Value('Ellis'))),
 
@@ -190,7 +192,7 @@ class TestParser(InvenioTestCase):
 
     queries = (
         ("J. Ellis",
-         AndOp(Value('J.'), Value('Ellis'))),
+         AndQuery(ValueQuery(SimpleValue('J.')), ValueQuery(SimpleValue('Ellis')))),
 
 
                )
