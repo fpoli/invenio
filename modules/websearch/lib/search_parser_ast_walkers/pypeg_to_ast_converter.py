@@ -74,6 +74,26 @@ class PypegConverter(object):
     def visit(self, node, left, right):
         return ast.RangeOp(left, right)
 
+    @visitor(parser.GreaterQuery)
+    def visit(self, node, child):
+        return ast.GreaterOp(child)
+
+    @visitor(parser.GreaterEqualQuery)
+    def visit(self, node, child):
+        return ast.GreaterEqualOp(child)
+
+    @visitor(parser.LowerQuery)
+    def visit(self, node, child):
+        return ast.LowerOp(child)
+
+    @visitor(parser.LowerEqualQuery)
+    def visit(self, node, child):
+        return ast.LowerEqualOp(child)
+
+    @visitor(parser.Number)
+    def visit(self, node):
+        return ast.Value(node.value)
+
     @visitor(parser.Value)
     def visit(self, node, child):
         return child
@@ -89,6 +109,10 @@ class PypegConverter(object):
     @visitor(parser.SpiresValue)
     def visit(self, node, children):
         return ast.Value("".join([c.value for c in children]))
+
+    @visitor(parser.SpiresValueQuery)
+    def visit(self, node, child):
+        return ast.ValueQuery(child)
 
     @visitor(parser.SpiresSimpleQuery)
     def visit(self, node, keyword, value):
@@ -153,6 +177,10 @@ class PypegConverter(object):
     @visitor(parser.FindQuery)
     def visit(self, node, child):
         return child
+
+    @visitor(parser.EmptyQueryRule)
+    def visit(self, node):
+        return ast.EmptyQuery(node.value)
 
     @visitor(parser.Main)
     def visit(self, node, child):

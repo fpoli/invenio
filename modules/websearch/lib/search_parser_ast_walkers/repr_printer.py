@@ -21,7 +21,9 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue,
                                               DoubleQuotedValue, ValueQuery,
-                                              RegexValue, RangeOp, SpiresOp)
+                                              RegexValue, RangeOp, SpiresOp,
+                                              GreaterOp, GreaterEqualOp,
+                                              LowerOp, LowerEqualOp, EmptyQuery)
 
 
 class TreeRepr(object):
@@ -76,6 +78,26 @@ class TreeRepr(object):
     @visitor(SpiresOp)
     def visit(self, node, left, right):
         return "find %s %s" % (left, right)
+
+    @visitor(GreaterOp)
+    def visit(self, node, op):
+        return '> %s' % op
+
+    @visitor(GreaterEqualOp)
+    def visit(self, node, op):
+        return '>= %s' % op
+
+    @visitor(LowerOp)
+    def visit(self, node, op):
+        return '< %s' % op
+
+    @visitor(LowerEqualOp)
+    def visit(self, node, op):
+        return '<= %s' % op
+
+    @visitor(EmptyQuery)
+    def visit(self, node):
+        return '__empty__'
 
     # pylint: enable=W0612,E0102
 

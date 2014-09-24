@@ -29,7 +29,10 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
                                               SingleQuotedValue, NotOp,
                                               DoubleQuotedValue, ValueQuery,
-                                              RegexValue, RangeOp, SpiresOp)
+                                              RegexValue, RangeOp, SpiresOp,
+                                              GreaterOp, GreaterEqualOp,
+                                              LowerOp, LowerEqualOp,
+                                              EmptyQuery)
 
 
 WALKERS = load_walkers()
@@ -66,8 +69,18 @@ class TestParser(InvenioTestCase):
     """Test parser functionality"""
 
     queries = (
+        ("",
+          EmptyQuery('')),
+        ("    \t",
+          EmptyQuery('    \t')),
         ("bar",
           ValueQuery(Value('bar'))),
+        ("2004",
+          ValueQuery(Value('2004'))),
+        ("'bar'",
+          ValueQuery(SingleQuotedValue('bar'))),
+        ("\"bar\"",
+          ValueQuery(DoubleQuotedValue('bar'))),
         ("J. Ellis",
          AndOp(ValueQuery(Value('J.')), ValueQuery(Value('Ellis')))),
         ("$e^{+}e^{-}$",
@@ -78,6 +91,8 @@ class TestParser(InvenioTestCase):
          KeywordOp(Keyword('foo'), Value('bar'))),
         ("foo: bar",
          KeywordOp(Keyword('foo'), Value('bar'))),
+        ("foo: 2004",
+         KeywordOp(Keyword('foo'), Value('2004'))),
         ("999: bar",
          KeywordOp(Keyword('999'), Value('bar'))),
         ("999C5: bar",
@@ -99,6 +114,12 @@ class TestParser(InvenioTestCase):
         ('author:"Ellis, J"',
          KeywordOp(Keyword('author'), DoubleQuotedValue("Ellis, J"))),
 
+        # Weird values
+        ("foo: \"bar",
+         KeywordOp(Keyword('foo'), Value('"bar'))),
+        ("foo: 'bar",
+         KeywordOp(Keyword('foo'), Value("'bar"))),
+
         # Range queries
         ("year: 2000->2012",
          KeywordOp(Keyword('year'), RangeOp(Value('2000'), Value('2012')))),
@@ -116,6 +137,8 @@ class TestParser(InvenioTestCase):
          KeywordOp(Keyword('author'), RangeOp(DoubleQuotedValue('Albert'), DoubleQuotedValue('John')))),
 
         # Star patterns
+        ("bar*",
+          ValueQuery(Value('bar*'))),
         ("foo: hello*",
          KeywordOp(Keyword('foo'), Value('hello*'))),
         ("foo: 'hello*'",
@@ -156,11 +179,15 @@ class TestParser(InvenioTestCase):
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
         ("foo:bar AND foo:bar",
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        ("foo and bar",
+         AndOp(ValueQuery(Value('foo')), ValueQuery(Value('bar')))),
         ("foo:bar or foo:bar",
          OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
         ("foo:bar | foo:bar",
          OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
         ("foo:bar not foo:bar",
+         AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
+        ("foo:bar and not foo:bar",
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
         ("foo:bar -foo:bar",
          AndOp(KeywordOp(Keyword('foo'), Value('bar')), NotOp(KeywordOp(Keyword('foo'), Value('bar'))))),
@@ -188,6 +215,9 @@ class TestParser(InvenioTestCase):
          OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
         ("(foo:bar) or (foo:bar )",
          OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
+        ("(foo1:bar1 or foo2:bar2) and (foo3:bar3 or foo4:bar4)",
+         AndOp(OrOp(KeywordOp(Keyword('foo1'), Value('bar1')), KeywordOp(Keyword('foo2'), Value('bar2'))),
+               OrOp(KeywordOp(Keyword('foo3'), Value('bar3')), KeywordOp(Keyword('foo4'), Value('bar4'))))),
         ("foo:bar and foo:bar and foo:bar",
             AndOp(KeywordOp(Keyword('foo'), Value('bar')),
                   AndOp(KeywordOp(Keyword('foo'), Value('bar')),
@@ -218,7 +248,7 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('a'), Value('richter'))),
         ("find a:\"richter, b\"",
          SpiresOp(Keyword('a'), DoubleQuotedValue('richter, b'))),
-        
+
         # Simple query with non-obvious values
         ("find a richter, b",
          SpiresOp(Keyword('a'), Value('richter, b'))),
@@ -226,6 +256,12 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))),
         ("find aaa bbb:ccc ddd:eee",
          SpiresOp(Keyword('aaa'), Value('bbb:ccc ddd:eee'))),
+        ("find da today-2",
+         SpiresOp(Keyword('da'), Value('today-2'))),
+        ("find da today - 2",
+         SpiresOp(Keyword('da'), Value('today - 2'))),
+        ("find da 2012-01-01",
+         SpiresOp(Keyword('da'), Value('2012-01-01'))),
 
         # Simple query with spaces
         ("find t quark   ",
@@ -263,15 +299,19 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find refersto j Phys.Rev.Lett.",
          SpiresOp(Keyword('refersto'), SpiresOp(Keyword('j'), Value('Phys.Rev.Lett.')))),
+        ("find refersto a ellis, j",
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis, j')))),
+        ("find refersto ellis, j",
+         SpiresOp(Keyword('refersto'), ValueQuery(Value('ellis, j')))),
         ("find a parke, s j and refersto author witten",
          AndOp(SpiresOp(Keyword('a'), Value("parke, s j")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('author'), Value('witten'))))),
         ("fin af oxford u. and refersto title muon*",
          AndOp(SpiresOp(Keyword('af'), Value("oxford u.")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('title'), Value('muon*'))))),
         ("find refersto a parke or refersto a lykken and a witten",
-         OrOp(SpiresOp(Keyword('a'), Value("parke")),
+         OrOp(SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value("parke"))),
               AndOp(SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('lykken'))),
                     SpiresOp(Keyword('a'), Value('witten'))))),
-        ("refersto:refersto:author:maldacena",
+        ("find refersto:refersto:author:maldacena",
          SpiresOp(Keyword('refersto'),
                   SpiresOp(Keyword('refersto'),
                            SpiresOp(Keyword('author'),
@@ -280,33 +320,37 @@ class TestParser(InvenioTestCase):
          AndOp(SpiresOp(Keyword('refersto'), ValueQuery(Value("hep-th/9711200"))),
                SpiresOp(Keyword('t'), Value('nucl*')))),
 
-        # TODO: create a GreaterOp
-        # ("find date > 1984",
-        #  SpiresOp(Keyword('date'), GreaterOp('1984')))
-        # ("find date >= 1984",
-        #  SpiresOp(Keyword('date'), GreaterEqualOp('1984')))
-        # ("find topcite 200+",
-        #  SpiresOp(Keyword('topcite'), GreaterEqualOp('200')))
-        # ("find date <= 2014-10-01",
-        #  SpiresOp(Keyword('date'), LessEqualOp('2014-10-01')))
-        # ("find da today - 2",
-        #  SpiresOp(Keyword('da'), Value('today - 2')))
-        # ("find du > yesterday - 2",
-        #  SpiresOp(Keyword('du'), GreaterOp('today - 2'))
-        # ("find da today-2",
-        #  SpiresOp(Keyword('da'), Value('today-2')))
-        # ("find du > yesterday-2",
-        #  SpiresOp(Keyword('du'), GreaterOp('today-2'))
+        # Greater, Lower Ops
+        ("find date > 1984",
+         SpiresOp(Keyword('date'), GreaterOp(Value('1984')))),
+        ("find date >= 1984",
+         SpiresOp(Keyword('date'), GreaterEqualOp(Value('1984')))),
+        ("find date <= 2014-10-01",
+         SpiresOp(Keyword('date'), LowerEqualOp(Value('2014-10-01')))),
+        ("find du > today-2",
+         SpiresOp(Keyword('du'), GreaterOp(Value('today-2')))),
+        ("find du > today - 2",
+         SpiresOp(Keyword('du'), GreaterOp(Value('today - 2')))),
+        ("find topcite 200+",
+         SpiresOp(Keyword('topcite'), GreaterEqualOp(Value('200')))),
+        ("find topcite 200-",
+         SpiresOp(Keyword('topcite'), LowerEqualOp(Value('200')))),
 
-        # Confusing queries
-        ("find aaa:bbb ccc:ddd",
-         ValueQuery(Value('ihavenoidea'))),
+        # Popular queries
+        ("arXiv:1004.0648",
+         KeywordOp(Keyword('arXiv'), Value("1004.0648"))),
+        ("find ea chowdhury, borun d",
+         SpiresOp(Keyword('ea'), Value("chowdhury, borun d"))),
+        ("(author:'Hiroshi Okada' OR (author:'H Okada' hep-ph) OR title: 'Dark matter in supersymmetric U(1(B-L) model' OR title: 'Non-Abelian discrete symmetry for flavors')",
+         OrOp(KeywordOp(Keyword('author'), SingleQuotedValue('Hiroshi Okada')),
+              OrOp(AndOp(KeywordOp(Keyword('author'), SingleQuotedValue('H Okada')),
+                         ValueQuery(Value('hep-ph'))),
+                   OrOp(KeywordOp(Keyword('title'), SingleQuotedValue('Dark matter in supersymmetric U(1(B-L) model')),
+                        KeywordOp(Keyword('title'), SingleQuotedValue('Non-Abelian discrete symmetry for flavors')))))),
+        ("f a Oleg Antipin",
+         SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
     )
 
-    # queries = (
-    #     ("(foo:bar) or foo:bar",
-    #      OrOp(KeywordOp(Keyword('foo'), Value('bar')), KeywordOp(Keyword('foo'), Value('bar')))),
-    #            )
 
 TEST_SUITE = make_test_suite(TestParser)
 

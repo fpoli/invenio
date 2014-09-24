@@ -245,14 +245,56 @@ class NestableKeyword(LeafRule):
     grammar = attr('value', [re.compile('refersto', re.I), ])
 
 
+class GreaterQuery(UnaryRule):
+    grammar = omit(Literal('>'), _), attr('op', SpiresValue)
+
+
+class Number(LeafRule):
+    grammar = attr('value', re.compile(r'\d+'))
+
+
+class GreaterEqualQuery(UnaryRule):
+    grammar = [
+        (omit(Literal('>='), _), attr('op', SpiresValue)),
+        (attr('op', Number), omit(re.compile(r'\+(?=\s|\)|$)'))),
+    ]
+
+
+class LowerQuery(UnaryRule):
+    grammar = omit(Literal('<'), _), attr('op', SpiresValue)
+
+
+class LowerEqualQuery(UnaryRule):
+    grammar = [
+        (omit(Literal('<='), _), attr('op', SpiresValue)),
+        (attr('op', Number), omit(re.compile(r'\-(?=\s|\)|$)'))),
+    ]
+
+
+class ValueQuery(UnaryRule):
+    grammar = attr('op', Value)
+
+
+class SpiresValueQuery(UnaryRule):
+    grammar = attr('op', SpiresValue)
+
+
 SpiresSimpleQuery.grammar = [
         (
             attr('left', NestableKeyword),
-            [
-                omit(_, Literal(':'), _),
-                omit(Whitespace),
-            ],
-            attr('right', [SpiresParenthesizedQuery, SpiresSimpleQuery]),
+            omit(_, Literal(':'), _),
+            attr('right', [
+                 SpiresParenthesizedQuery,
+                 SpiresSimpleQuery,
+                 ValueQuery]),
+        ),
+        (
+            attr('left', NestableKeyword),
+            omit(Whitespace),
+            attr('right', [
+                 SpiresParenthesizedQuery,
+                 SpiresSimpleQuery,
+                 SpiresValueQuery]),
         ),
         (
             attr('left', Word),
@@ -262,7 +304,12 @@ SpiresSimpleQuery.grammar = [
         (
             attr('left', Word),
             omit(Whitespace),
-            attr('right', SpiresValue)
+            attr('right', [
+                GreaterEqualQuery,
+                GreaterQuery,
+                LowerEqualQuery,
+                LowerQuery,
+                SpiresValue])
         ),
     ]
 
@@ -308,10 +355,6 @@ SpiresOrQuery.grammar = (
 
 class Query(UnaryRule):
     pass
-
-
-class ValueQuery(UnaryRule):
-    grammar = attr('op', Value)
 
 
 class KeywordQuery(BinaryRule):
@@ -440,8 +483,14 @@ class FindQuery(UnaryRule):
     grammar = omit(Find, Whitespace), attr('op', SpiresQuery)
 
 
+class EmptyQueryRule(LeafRule):
+    grammar = attr('value', re.compile(r'\s*'))
+
 class Main(UnaryRule):
-    grammar = omit(_), attr('op', [FindQuery, Query]), omit(_)
+    grammar = [
+        (omit(_), attr('op', [FindQuery, Query]), omit(_)),
+        attr('op', EmptyQueryRule),
+    ]
 
 
 # pylint: enable=C0321,R0903

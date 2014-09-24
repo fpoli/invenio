@@ -25,7 +25,6 @@ class BinaryOp(object):
         self.right = right
 
     def accept(self, visitor):
-        #print 'binary op', repr(self)
         return visitor.visit(self,
                              self.left.accept(visitor),
                              self.right.accept(visitor))
@@ -46,7 +45,6 @@ class UnaryOp(object):
         self.op = op
 
     def accept(self, visitor):
-        # print 'op', repr(self.op)
         return visitor.visit(self, self.op.accept(visitor))
 
     def __eq__(self, other):
@@ -61,12 +59,12 @@ class ListOp(object):
     def __init__(self, children):
         try:
             iter(children)
-            self.children = children
         except TypeError:
             self.children = [children]
+        else:
+            self.children = children
 
     def accept(self, visitor):
-        #print 'list op', repr(self.children)
         return visitor.visit(self, [c.accept(visitor) for c in self.children])
 
     def __eq__(self, other):
@@ -82,7 +80,6 @@ class Leaf(object):
         self.value = value
 
     def accept(self, visitor):
-        #print 'leaf', repr(self)
         return visitor.visit(self)
 
     def __eq__(self, other):
@@ -108,6 +105,22 @@ class NotOp(UnaryOp):
 
 
 class RangeOp(BinaryOp):
+    pass
+
+
+class LowerOp(UnaryOp):
+    pass
+
+
+class LowerEqualOp(UnaryOp):
+    pass
+
+
+class GreaterOp(UnaryOp):
+    pass
+
+
+class GreaterEqualOp(UnaryOp):
     pass
 
 
@@ -140,4 +153,8 @@ class DoubleQuotedValue(Leaf):
 
 
 class RegexValue(Leaf):
+    pass
+
+
+class EmptyQuery(Leaf):
     pass
