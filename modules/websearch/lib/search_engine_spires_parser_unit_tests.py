@@ -199,7 +199,7 @@ class TestParser(InvenioTestCase):
                                  ValueQuery(Value('ddd'))
         ))))),
 
-        # Second order keyword operation
+        # Nested searches
         ("refersto:author:Ellis",
          KeywordOp(Keyword('refersto'), KeywordOp(Keyword('author'), Value('Ellis')))),
         ("refersto:refersto:author:Ellis",
@@ -209,27 +209,39 @@ class TestParser(InvenioTestCase):
         ("refersto:(foo:bar and Ellis)",
          KeywordOp(Keyword('refersto'), AndOp(KeywordOp(Keyword('foo'), Value('bar')), ValueQuery(Value('Ellis'))))),
 
-        # Spires syntax
+        ### Spires syntax ###
+
+        # Simple query
         ("find t quark",
          SpiresOp(Keyword('t'), Value('quark'))),
-        ("find a richter, b",
-         SpiresOp(Keyword('a'), Value('richter, b'))),
         ("find a:richter",
          SpiresOp(Keyword('a'), Value('richter'))),
         ("find a:\"richter, b\"",
          SpiresOp(Keyword('a'), DoubleQuotedValue('richter, b'))),
-        ("find a:richter and t quark",
-         AndOp(SpiresOp(Keyword('a'), Value('richter')), SpiresOp(Keyword('t'), Value('quark')))),
+        
+        # Simple query with non-obvious values
+        ("find a richter, b",
+         SpiresOp(Keyword('a'), Value('richter, b'))),
+        ("find texkey Allison:1980vw",
+         SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))),
+        ("find aaa bbb:ccc ddd:eee",
+         SpiresOp(Keyword('aaa'), Value('bbb:ccc ddd:eee'))),
+
+        # Simple query with spaces
         ("find t quark   ",
          SpiresOp(Keyword('t'), Value('quark'))),
         ("   find t quark   ",
          SpiresOp(Keyword('t'), Value('quark'))),
         ("find t quark ellis  ",
          SpiresOp(Keyword('t'), Value('quark ellis'))),
+
+        # Combined queries
         ("find t quark and a ellis",
          AndOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find t quark or a ellis",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
+        ("find a:richter and t quark",
+         AndOp(SpiresOp(Keyword('a'), Value('richter')), SpiresOp(Keyword('t'), Value('quark')))),
         ("find (t quark) or (a ellis)",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find (t quark or a ellis)",
@@ -246,8 +258,27 @@ class TestParser(InvenioTestCase):
                     AndOp(SpiresOp(Keyword('j'), Value('phys.rev.lett.')),
                           SpiresOp(Keyword('primarch'), Value('hep-ph')))))),
 
-        ("find texkey Allison:1980vw",
-         SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))),
+        # Nested searches
+        ("find refersto a ellis",
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
+        ("find refersto j Phys.Rev.Lett.",
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('j'), Value('Phys.Rev.Lett.')))),
+        ("find a parke, s j and refersto author witten",
+         AndOp(SpiresOp(Keyword('a'), Value("parke, s j")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('author'), Value('witten'))))),
+        ("fin af oxford u. and refersto title muon*",
+         AndOp(SpiresOp(Keyword('af'), Value("oxford u.")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('title'), Value('muon*'))))),
+        ("find refersto a parke or refersto a lykken and a witten",
+         OrOp(SpiresOp(Keyword('a'), Value("parke")),
+              AndOp(SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('lykken'))),
+                    SpiresOp(Keyword('a'), Value('witten'))))),
+        ("refersto:refersto:author:maldacena",
+         SpiresOp(Keyword('refersto'),
+                  SpiresOp(Keyword('refersto'),
+                           SpiresOp(Keyword('author'),
+                                    Value('maldacena'))))),
+        ("find refersto hep-th/9711200 and t nucl*",
+         AndOp(SpiresOp(Keyword('refersto'), ValueQuery(Value("hep-th/9711200"))),
+               SpiresOp(Keyword('t'), Value('nucl*')))),
 
         # TODO: create a GreaterOp
         # ("find date > 1984",
@@ -267,10 +298,9 @@ class TestParser(InvenioTestCase):
         # ("find du > yesterday-2",
         #  SpiresOp(Keyword('du'), GreaterOp('today-2'))
 
-        # This will be difficult without knowing the list of second-order keywords
-        ("find refersto a ellis",
-         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
-
+        # Confusing queries
+        ("find aaa:bbb ccc:ddd",
+         ValueQuery(Value('ihavenoidea'))),
     )
 
     # queries = (
