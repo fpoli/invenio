@@ -78,6 +78,10 @@ class PypegConverter(object):
     def visit(self, node, child):
         return child
 
+    @visitor(parser.NestableKeyword)
+    def visit(self, node):
+        return ast.Keyword(node.value)
+
     @visitor(parser.SpiresSimpleValue)
     def visit(self, node):
         return ast.Value(node.value)

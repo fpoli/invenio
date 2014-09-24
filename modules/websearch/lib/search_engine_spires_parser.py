@@ -212,24 +212,8 @@ class SpiresValue(ast.ListOp):
     ]
 
 
-class SpiresCompositeQuery(BinaryRule):
-    pass
-
-
 class SpiresSimpleQuery(BinaryRule):
-    grammar = [
-        (
-            attr('left', Word),
-            omit(_, Literal(':'), _),
-            attr('right', Value)
-        ),
-        (
-            attr('left', Word),
-            omit(Whitespace),
-            attr('right', SpiresValue)
-        ),
-        SpiresCompositeQuery,
-    ]
+    pass
 
 
 class SpiresNotQuery(UnaryRule):
@@ -257,14 +241,31 @@ class SpiresQuery(UnaryRule):
         SpiresSimpleQuery])
 
 
-SpiresCompositeQuery.grammar = (
-        attr('left', [Literal('refersto'), ]),
-        [
-            omit(Whitespace),
+class NestableKeyword(LeafRule):
+    grammar = attr('value', [re.compile('refersto', re.I), ])
+
+
+SpiresSimpleQuery.grammar = [
+        (
+            attr('left', NestableKeyword),
+            [
+                omit(_, Literal(':'), _),
+                omit(Whitespace),
+            ],
+            attr('right', [SpiresParenthesizedQuery, SpiresSimpleQuery]),
+        ),
+        (
+            attr('left', Word),
             omit(_, Literal(':'), _),
-        ],
-        [SpiresParenthesizedQuery, SpiresCompositeQuery, SpiresSimpleQuery],
-    )
+            attr('right', Value)
+        ),
+        (
+            attr('left', Word),
+            omit(Whitespace),
+            attr('right', SpiresValue)
+        ),
+    ]
+
 
 SpiresNotQuery.grammar = (
         omit(re.compile(r"not", re.I)),

@@ -46,7 +46,7 @@ class UnaryOp(object):
         self.op = op
 
     def accept(self, visitor):
-        #print 'op', repr(self.op)
+        # print 'op', repr(self.op)
         return visitor.visit(self, self.op.accept(visitor))
 
     def __eq__(self, other):
