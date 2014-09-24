@@ -200,7 +200,6 @@ class TestParser(InvenioTestCase):
         ))))),
 
         # Second order keyword operation
-        # TODO: Do we want a new AST node called 'NestedOp'?
         ("refersto:author:Ellis",
          KeywordOp(Keyword('refersto'), KeywordOp(Keyword('author'), Value('Ellis')))),
         ("refersto:refersto:author:Ellis",
@@ -215,8 +214,12 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('t'), Value('quark'))),
         ("find a richter, b",
          SpiresOp(Keyword('a'), Value('richter, b'))),
-        ("find a:richter, b a",
-         SpiresOp(Keyword('a'), Value('richter, b a'))),
+        ("find a:richter",
+         SpiresOp(Keyword('a'), Value('richter'))),
+        ("find a:\"richter, b\"",
+         SpiresOp(Keyword('a'), DoubleQuotedValue('richter, b'))),
+        ("find a:richter and t quark",
+         AndOp(SpiresOp(Keyword('a'), Value('richter')), SpiresOp(Keyword('t'), Value('quark')))),
         ("find t quark   ",
          SpiresOp(Keyword('t'), Value('quark'))),
         ("   find t quark   ",
@@ -233,9 +236,9 @@ class TestParser(InvenioTestCase):
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find ((t quark) or (a ellis))",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
-        ("find (( t quark )|( a ellis ))",
+        ("find (( t quark )or( a ellis ))",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
-        ("find (( t quark )|( a:ellis ))",
+        ("find (( t quark )or( a:ellis ))",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find a l everett or t light higgs and j phys.rev.lett. and primarch hep-ph",
          OrOp(SpiresOp(Keyword('a'), Value('l everett')),
@@ -259,11 +262,15 @@ class TestParser(InvenioTestCase):
         #  SpiresOp(Keyword('da'), Value('today - 2')))
         # ("find du > yesterday - 2",
         #  SpiresOp(Keyword('du'), GreaterOp('today - 2'))
+        # ("find da today-2",
+        #  SpiresOp(Keyword('da'), Value('today-2')))
+        # ("find du > yesterday-2",
+        #  SpiresOp(Keyword('du'), GreaterOp('today-2'))
 
         # This will be difficult without knowing the list of second-order keywords
         ("find refersto a ellis",
          SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
-        
+
     )
 
     # queries = (

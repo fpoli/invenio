@@ -21,7 +21,8 @@ import os
 import re
 import traceback
 
-from pypeg2 import (Keyword, maybe_some, optional, parse, Symbol, attr,
+import pypeg2
+from pypeg2 import (Keyword, maybe_some, optional, attr,
                     Literal, omit, some)
 
 
@@ -50,15 +51,19 @@ def generate_lexer(lg):
 
 
 class LeafRule(ast.Leaf):
+
     def __init__(self):
         pass
 
 
 class UnaryRule(ast.UnaryOp):
+
     def __init__(self):
         pass
 
+
 class BinaryRule(ast.BinaryOp):
+
     def __init__(self):
         pass
 
@@ -104,11 +109,12 @@ class SimpleValue(LeafRule):
         super(SimpleValue, self).__init__()
         self.value = "".join(v.value for v in values)
 
+
 class SimpleValueUnit(LeafRule):
     grammar = [
-                re.compile(r"[^\s\)\(:]+"),
-                (re.compile(r'\('), SimpleValue, re.compile(r'\)')),
-              ]
+        re.compile(r"[^\s\)\(:]+"),
+        (re.compile(r'\('), SimpleValue, re.compile(r'\)')),
+    ]
 
     def __init__(self, args):
         super(SimpleValueUnit, self).__init__()
@@ -121,9 +127,33 @@ class SimpleValueUnit(LeafRule):
 SimpleValue.grammar = some(SimpleValueUnit)
 
 
+class SpiresSimpleValue(LeafRule):
+
+    def __init__(self, values):
+        super(SpiresSimpleValue, self).__init__()
+        self.value = "".join(v.value for v in values)
+
+
+class SpiresSimpleValueUnit(LeafRule):
+    grammar = [
+        re.compile(r"[^\s\)\(]+"),
+        (re.compile(r'\('), SpiresSimpleValue, re.compile(r'\)')),
+    ]
+
+    def __init__(self, args):
+        super(SpiresSimpleValueUnit, self).__init__()
+        if isinstance(args, basestring):
+            self.value = args
+        else:
+            self.value = args[0] + args[1].value + args[2]
+
+
+SpiresSimpleValue.grammar = some(SpiresSimpleValueUnit)
+
 
 class SimpleRangeValue(LeafRule):
     grammar = attr('value', re.compile(r"([^\s\)\(-]|-+[^\s\)\(>])+"))
+
 
 class RangeValue(UnaryRule):
     grammar = attr('op', [DoubleQuotedString, SimpleRangeValue])
@@ -131,10 +161,10 @@ class RangeValue(UnaryRule):
 
 class RangeOp(BinaryRule):
     grammar = (
-                attr('left', RangeValue),
-                Literal('->'),
-                attr('right', RangeValue)
-              )
+        attr('left', RangeValue),
+        Literal('->'),
+        attr('right', RangeValue)
+    )
 
 
 class Value(UnaryRule):
@@ -151,32 +181,55 @@ class Find(Keyword):
     regex = re.compile(r"(find|fin|f)", re.I)
 
 
-class SimpleSpiresValue(UnaryRule):
-    grammar = attr('op', [Value, Literal('('), Literal(')')])
+class SpiresSmartValue(UnaryRule):
+
+    @classmethod
+    def parse(cls, parser, text, pos):  # pylint: disable=W0613
+        """Match simple values excluding some Keywords like 'and' and 'or'"""
+        if not text.strip():
+            return text, SyntaxError("Invalid value")
+
+        class Rule(object):
+            grammar = attr('value', SpiresSimpleValue), omit(re.compile(".*"))
+
+        try:
+            tree = pypeg2.parse(text, Rule, whitespace="")
+        except SyntaxError:
+            return text, SyntaxError("Expected %r" % cls)
+        else:
+            r = tree.value
+
+        if r.value.lower() in ('and', 'or', 'not'):
+            return text, SyntaxError("Invalid value %s" % r.value)
+
+        return text[len(r.value):], r
 
 
 class SpiresValue(ast.ListOp):
-    pass
+    grammar = [
+        (SpiresSmartValue, maybe_some(Whitespace, SpiresSmartValue)),
+        Value,
+    ]
 
-SpiresValue.grammar = [
-                        (SimpleSpiresValue, Whitespace, SpiresValue,),
-                        (SimpleSpiresValue,),
-                      ]
+
+class SpiresCompositeQuery(BinaryRule):
+    pass
 
 
 class SpiresSimpleQuery(BinaryRule):
     grammar = [
-                (
-                    attr('left', Word),
-                    omit(_, Literal(':'), _),
-                    attr('right', SpiresValue)
-                ),
-                (
-                    attr('left', Word),
-                    omit(_),
-                    attr('right', SpiresValue)
-                ),
-            ]
+        (
+            attr('left', Word),
+            omit(_, Literal(':'), _),
+            attr('right', Value)
+        ),
+        (
+            attr('left', Word),
+            omit(Whitespace),
+            attr('right', SpiresValue)
+        ),
+        SpiresCompositeQuery,
+    ]
 
 
 class SpiresNotQuery(UnaryRule):
@@ -203,51 +256,58 @@ class SpiresQuery(UnaryRule):
         SpiresParenthesizedQuery,
         SpiresSimpleQuery])
 
-SpiresNotQuery.grammar = [
-    (
-        omit(Not),
+
+SpiresCompositeQuery.grammar = (
+        attr('left', [Literal('refersto'), ]),
+        [
+            omit(Whitespace),
+            omit(_, Literal(':'), _),
+        ],
+        [SpiresParenthesizedQuery, SpiresCompositeQuery, SpiresSimpleQuery],
+    )
+
+SpiresNotQuery.grammar = (
+        omit(re.compile(r"not", re.I)),
         [
             (omit(Whitespace), attr('op', SpiresSimpleQuery)),
             (omit(_), attr('op', SpiresParenthesizedQuery)),
         ],
-    ),
-    (
-        omit(Literal('-')),
-        attr('op', SpiresQuery),
-    )
-]
+)
+
 SpiresParenthesizedQuery.grammar = (
-                                        Literal('('),
-                                        _,
-                                        attr('op', SpiresQuery),
-                                        _,
-                                        Literal(')')
-                                    )
+    omit(Literal('('), _),
+    attr('op', SpiresQuery),
+    omit(_, Literal(')')),
+)
+
 SpiresAndQuery.grammar = (
     [
-        attr('left', SpiresParenthesizedQuery),
-        (attr('left', SpiresSimpleQuery), Whitespace)
+        (attr('left', SpiresParenthesizedQuery), omit(_)),
+        (attr('left', SpiresSimpleQuery), omit(Whitespace)),
     ],
-    And,
+    omit(re.compile(r"and", re.I)),
     [
-        (Whitespace, attr('right', SpiresQuery)),
-        attr('right', SpiresParenthesizedQuery)
-    ]
-)
-SpiresOrQuery.grammar = (
-    [
-        attr('left', SpiresParenthesizedQuery),
-        (attr('left', SpiresSimpleQuery), Whitespace)
-    ],
-    Or,
-    [
-        (Whitespace, attr('right', SpiresQuery)),
-        attr('right', SpiresParenthesizedQuery)
+        (omit(Whitespace), attr('right', SpiresQuery)),
+        (omit(_), attr('right', SpiresParenthesizedQuery)),
     ]
 )
 
+SpiresOrQuery.grammar = (
+    [
+        (attr('left', SpiresParenthesizedQuery), omit(_)),
+        (attr('left', SpiresSimpleQuery), omit(Whitespace)),
+    ],
+    omit(re.compile(r"or", re.I)),
+    [
+        (omit(Whitespace), attr('right', SpiresQuery)),
+        (omit(_), attr('right', SpiresParenthesizedQuery)),
+    ]
+)
+
+
 class Query(UnaryRule):
     pass
+
 
 class ValueQuery(UnaryRule):
     grammar = attr('op', Value)
@@ -257,22 +317,23 @@ class KeywordQuery(BinaryRule):
     pass
 
 KeywordQuery.grammar = [
-                (
-                    attr('left', Word),
-                    omit(_, Literal(':'), _),
-                    attr('right', KeywordQuery)
-                ),
-                (
-                    attr('left', Word),
-                    omit(_, Literal(':'), _),
-                    attr('right', Value)
-                ),
-                (
-                    attr('left', Word),
-                    omit(_, Literal(':'), _),
-                    attr('right', Query)
-                ),
-            ]
+    (
+        attr('left', Word),
+        omit(_, Literal(':'), _),
+        attr('right', KeywordQuery)
+    ),
+    (
+        attr('left', Word),
+        omit(_, Literal(':'), _),
+        attr('right', Value)
+    ),
+    (
+        attr('left', Word),
+        omit(_, Literal(':'), _),
+        attr('right', Query)
+    ),
+]
+
 
 class SimpleQuery(UnaryRule):
     grammar = attr('op', [KeywordQuery, ValueQuery])
@@ -299,13 +360,13 @@ class OrQuery(BinaryRule):
 
 
 Query.grammar = attr('op', [
-        NotQuery,
-        AndQuery,
-        OrQuery,
-        ImplicitAndQuery,
-        ParenthesizedQuery,
-        SimpleQuery
-    ])
+    NotQuery,
+    AndQuery,
+    OrQuery,
+    ImplicitAndQuery,
+    ParenthesizedQuery,
+    SimpleQuery
+])
 
 
 NotQuery.grammar = [
@@ -321,7 +382,8 @@ NotQuery.grammar = [
         attr('op', Query),
     ),
 ]
-ParenthesizedQuery.grammar = omit(Literal('('), _), attr('op', Query), omit(_, Literal(')'))
+ParenthesizedQuery.grammar = omit(
+    Literal('('), _), attr('op', Query), omit(_, Literal(')'))
 AndQuery.grammar = [
     (
         [
@@ -415,4 +477,4 @@ PARSER = generate_parser()
 
 def parseQuery(query, parser=PARSER):
     """Parse query string using given grammar"""
-    return parse(query, parser, whitespace="")
+    return pypeg2.parse(query, parser, whitespace="")

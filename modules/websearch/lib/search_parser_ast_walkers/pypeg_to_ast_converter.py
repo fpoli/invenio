@@ -78,9 +78,9 @@ class PypegConverter(object):
     def visit(self, node, child):
         return child
 
-    @visitor(parser.SimpleSpiresValue)
-    def visit(self, node, child):
-        return child
+    @visitor(parser.SpiresSimpleValue)
+    def visit(self, node):
+        return ast.Value(node.value)
 
     @visitor(parser.SpiresValue)
     def visit(self, node, children):
@@ -104,7 +104,7 @@ class PypegConverter(object):
 
     @visitor(parser.SpiresOrQuery)
     def visit(self, node, left, right):
-        return ast.NotOp(left, right)
+        return ast.OrOp(left, right)
 
     @visitor(parser.SpiresQuery)
     def visit(self, node, child):
