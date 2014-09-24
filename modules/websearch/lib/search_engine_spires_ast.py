@@ -63,11 +63,16 @@ class ListOp(object):
             iter(children)
             self.children = children
         except TypeError:
-            self.children = [children]
+            self.children = children
 
     def accept(self, visitor):
-        #print 'list op', repr(self.children)
-        return visitor.visit(self, [c.accept(visitor) for c in self.children])
+        try:
+            iter(self.children)
+            children = self.children
+        except TypeError:
+            children = [self.children]
+        print 'list op', repr(children)
+        return visitor.visit(self, [c.accept(visitor) for c in children])
 
     def __eq__(self, other):
         return type(self) == type(other) and self.op == other.op

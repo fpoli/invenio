@@ -62,6 +62,10 @@ class BinaryRule(ast.BinaryOp):
     def __init__(self):
         pass
 
+class ListRule(ast.ListOp):
+    def __init__(self):
+        pass
+
 
 class Whitespace(LeafRule):
     grammar = attr('value', re.compile(r"\s+"))
@@ -152,16 +156,29 @@ class Find(Keyword):
 
 
 class SimpleSpiresValue(UnaryRule):
-    grammar = attr('op', [Value, Literal('('), Literal(')')])
+    grammar = attr('op', Value)
+
+    @classmethod
+    def parse(cls, parser, text, pos):
+        # Avoid expanding when there is and, ...
+        if text.startswith("and"):
+            return text, SyntaxError()
+
+        # Default parser
+        t, r = parser.parse(text, cls.grammar.thing)
+        print "text", text, "-> t, r", t, r
+        obj = cls()
+        obj.op = r
+        return t, obj
 
 
-class SpiresValue(ast.ListOp):
+class SpiresValue(ListRule):
     pass
 
-SpiresValue.grammar = [
+SpiresValue.grammar = attr('children', [
                         (SimpleSpiresValue, Whitespace, SpiresValue,),
                         (SimpleSpiresValue,),
-                      ]
+                      ])
 
 
 class SpiresSimpleQuery(BinaryRule):
