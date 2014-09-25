@@ -188,8 +188,12 @@ class Or(object):
     ])
 
 
-class Word(LeafRule):
+class KeywordRule(LeafRule):
     grammar = attr('value', re.compile(r"[\w\d]+"))
+
+
+class SpiresKeywordRule(LeafRule):
+    grammar = attr('value', re.compile(r"(%s)\b" % "|".join(SPIRES_KEYWORDS), re.I))
 
 
 class SingleQuotedString(LeafRule):
@@ -314,8 +318,16 @@ class SpiresValue(ast.ListOp):
     ]
 
 
-class SpiresSimpleQuery(BinaryRule):
+class SpiresKeywordQuery(BinaryRule):
     pass
+
+
+class SpiresValueQuery(UnaryRule):
+    grammar = attr('op', SpiresValue)
+
+
+class SpiresSimpleQuery(UnaryRule):
+    grammar = attr('op', [SpiresKeywordQuery, SpiresValueQuery])
 
 
 class SpiresQuery(ListRule):
@@ -339,6 +351,7 @@ class SpiresNotQuery(UnaryRule):
             [
                 (omit(Whitespace), attr('op', SpiresSimpleQuery)),
                 (omit(_), attr('op', SpiresParenthesizedQuery)),
+                (omit(Whitespace), attr('op', SpiresValueQuery)),
             ],
     )
 
@@ -349,6 +362,7 @@ class SpiresAndQuery(UnaryRule):
         [
             (omit(Whitespace), attr('op', SpiresSimpleQuery)),
             (omit(_), attr('op', SpiresParenthesizedQuery)),
+                (omit(Whitespace), attr('op', SpiresValueQuery)),
         ]
     )
 
@@ -359,6 +373,7 @@ class SpiresOrQuery(UnaryRule):
         [
             (omit(Whitespace), attr('op', SpiresSimpleQuery)),
             (omit(_), attr('op', SpiresParenthesizedQuery)),
+                (omit(Whitespace), attr('op', SpiresValueQuery)),
         ]
     )
 
@@ -380,7 +395,9 @@ SpiresQuery.grammar = attr('children', (
 
 
 class NestableKeyword(LeafRule):
-    grammar = attr('value', [re.compile('refersto', re.I), ])
+    grammar = attr('value', [
+        re.compile('refersto', re.I),
+    ])
 
 
 class GreaterQuery(UnaryRule):
@@ -425,18 +442,15 @@ class ValueQuery(UnaryRule):
     grammar = attr('op', Value)
 
 
-class SpiresValueQuery(UnaryRule):
-    grammar = attr('op', SpiresValue)
-
-
-SpiresSimpleQuery.grammar = [
+SpiresKeywordQuery.grammar = [
         (
             attr('left', NestableKeyword),
             omit(_, Literal(':'), _),
             attr('right', [
                  SpiresParenthesizedQuery,
                  SpiresSimpleQuery,
-                 ValueQuery]),
+                 ValueQuery
+            ]),
         ),
         (
             attr('left', NestableKeyword),
@@ -444,22 +458,24 @@ SpiresSimpleQuery.grammar = [
             attr('right', [
                  SpiresParenthesizedQuery,
                  SpiresSimpleQuery,
-                 SpiresValueQuery]),
+                 SpiresValueQuery
+            ]),
         ),
         (
-            attr('left', Word),
+            attr('left', KeywordRule),
             omit(_, Literal(':'), _),
             attr('right', Value)
         ),
         (
-            attr('left', Word),
+            attr('left', SpiresKeywordRule),
             omit(Whitespace),
             attr('right', [
                 GreaterEqualQuery,
                 GreaterQuery,
                 LowerEqualQuery,
                 LowerQuery,
-                SpiresValue])
+                SpiresValue
+            ])
         ),
     ]
 
@@ -474,17 +490,17 @@ class KeywordQuery(BinaryRule):
 
 KeywordQuery.grammar = [
     (
-        attr('left', Word),
+        attr('left', KeywordRule),
         omit(_, Literal(':'), _),
         attr('right', KeywordQuery)
     ),
     (
-        attr('left', Word),
+        attr('left', KeywordRule),
         omit(_, Literal(':'), _),
         attr('right', Value)
     ),
     (
-        attr('left', Word),
+        attr('left', KeywordRule),
         omit(_, Literal(':'), _),
         attr('right', Query)
     ),
@@ -566,11 +582,12 @@ Query.grammar = attr('children', (
     maybe_some((
         omit(_),
         [
-        NotQuery,
-        AndQuery,
-        OrQuery,
-        ImplicitAndQuery,
-    ])),
+            NotQuery,
+            AndQuery,
+            OrQuery,
+            ImplicitAndQuery,
+        ]
+    )),
 ))
 
 
