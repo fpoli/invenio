@@ -522,9 +522,19 @@ def load_walkers():
     return plugins.get_enabled_plugins()
 
 
-PARSER = generate_parser()
+class SpiresToInvenioSyntaxConverter(object):
+    def __init__(self):
+        self.parser = generate_parser()
+        self.walkers = load_walkers()
 
+    def parse_query(self, query):
+        """Parse query string using given grammar"""
+        tree = pypeg2.parse(query, self.parser, whitespace="")
+        converter = self.walkers['pypeg_to_ast_converter']()
+        return tree.accept(converter)
 
-def parseQuery(query, parser=PARSER):
-    """Parse query string using given grammar"""
-    return pypeg2.parse(query, parser, whitespace="")
+    def convert_query(self, query):
+        tree = self.parse_query(query)
+        converter = self.walkers['spires_to_invenio_converter']()
+        printer = self.walkers['repr_printer']()
+        return tree.accept(converter).accept(printer)

@@ -25,7 +25,7 @@ from invenio.testutils import (make_test_suite,
                                run_test_suite,
                                InvenioTestCase,
                                nottest)
-from invenio.search_engine_spires_parser import (parseQuery,
+from invenio.search_engine_spires_parser import (parse_query,
                                                  generate_parser)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
@@ -41,7 +41,7 @@ from rply import ParsingError
 def generate_walker_test(query, expected):
     def func(self):
         try:
-            tree = parseQuery(query)
+            tree = parse_query(query)
         except ParsingError as e:
             print 'Source pos', e.getsourcepos()
             raise

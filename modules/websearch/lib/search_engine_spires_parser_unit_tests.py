@@ -23,7 +23,7 @@ from invenio.testutils import (make_test_suite,
                                run_test_suite,
                                InvenioTestCase,
                                nottest)
-from invenio.search_engine_spires_parser import (parseQuery,
+from invenio.search_engine_spires_parser import (parse_query,
                                                  load_walkers)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
@@ -35,16 +35,13 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               EmptyQuery)
 
 
-WALKERS = load_walkers()
-
-
 @nottest
 def generate_parser_test(query, expected):
     def func(self):
-        tree = parseQuery(query)
-        converter = WALKERS['pypeg_to_ast_converter']()
+        tree = parse_query(query)
+        converter = self.walkers['pypeg_to_ast_converter']()
         tree = tree.accept(converter)
-        printer = WALKERS['repr_printer']()
+        printer = self.walkers['repr_printer']()
         print 'parsed tree  :', tree.accept(printer)
         print 'expected tree:', expected.accept(printer)
         self.assertEqual(tree, expected)
@@ -65,7 +62,6 @@ def generate_tests(generate_test):
 
 @generate_tests(generate_parser_test)  # pylint: disable=R0903
 class TestParser(InvenioTestCase):
-
     """Test parser functionality"""
 
     queries = (
@@ -356,6 +352,10 @@ class TestParser(InvenioTestCase):
                NotOp(SpiresOp(Keyword('a'), Value('rodrigo,j'))))),
 
     )
+
+    @classmethod
+    def setUpClass(cls):
+        cls.walkers = load_walkers()
 
 
 TEST_SUITE = make_test_suite(TestParser)
