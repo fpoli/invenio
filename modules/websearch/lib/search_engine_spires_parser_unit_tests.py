@@ -219,15 +219,20 @@ class TestParser(InvenioTestCase):
          AndOp(OrOp(KeywordOp(Keyword('foo1'), Value('bar1')), KeywordOp(Keyword('foo2'), Value('bar2'))),
                OrOp(KeywordOp(Keyword('foo3'), Value('bar3')), KeywordOp(Keyword('foo4'), Value('bar4'))))),
         ("foo:bar and foo:bar and foo:bar",
-            AndOp(KeywordOp(Keyword('foo'), Value('bar')),
-                  AndOp(KeywordOp(Keyword('foo'), Value('bar')),
-                        KeywordOp(Keyword('foo'), Value('bar'))))),
+            AndOp(AndOp(KeywordOp(Keyword('foo'), Value('bar')),
+                        KeywordOp(Keyword('foo'), Value('bar'))),
+                  KeywordOp(Keyword('foo'), Value('bar')))),
         ("aaa +bbb -ccc +ddd",
-         AndOp(ValueQuery(Value('aaa')),
-               AndOp(ValueQuery(Value('bbb')),
-                     NotOp(AndOp(ValueQuery(Value('ccc')),
-                                 ValueQuery(Value('ddd'))
-        ))))),
+         AndOp(
+            AndOp(
+                AndOp(
+                    ValueQuery(Value('aaa')),
+                    ValueQuery(Value('bbb'))
+                ),
+                NotOp(ValueQuery(Value('ccc')))
+            ),
+            ValueQuery(Value('ddd'))
+         )),
 
         # Nested searches
         ("refersto:author:Ellis",
@@ -289,10 +294,16 @@ class TestParser(InvenioTestCase):
         ("find (( t quark )or( a:ellis ))",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find a l everett or t light higgs and j phys.rev.lett. and primarch hep-ph",
-         OrOp(SpiresOp(Keyword('a'), Value('l everett')),
-              AndOp(SpiresOp(Keyword('t'), Value('light higgs')),
-                    AndOp(SpiresOp(Keyword('j'), Value('phys.rev.lett.')),
-                          SpiresOp(Keyword('primarch'), Value('hep-ph')))))),
+         AndOp(
+            AndOp(
+                OrOp(
+                    SpiresOp(Keyword('a'), Value('l everett')),
+                    SpiresOp(Keyword('t'), Value('light higgs'))
+                ),
+                SpiresOp(Keyword('j'), Value('phys.rev.lett.'))
+            ),
+            SpiresOp(Keyword('primarch'), Value('hep-ph'))
+         )),
 
         # Nested searches
         ("find refersto a ellis",
@@ -308,9 +319,13 @@ class TestParser(InvenioTestCase):
         ("fin af oxford u. and refersto title muon*",
          AndOp(SpiresOp(Keyword('af'), Value("oxford u.")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('title'), Value('muon*'))))),
         ("find refersto a parke or refersto a lykken and a witten",
-         OrOp(SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value("parke"))),
-              AndOp(SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('lykken'))),
-                    SpiresOp(Keyword('a'), Value('witten'))))),
+         AndOp(
+            OrOp(
+                SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value("parke"))),
+                SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('lykken')))
+            ),
+            SpiresOp(Keyword('a'), Value('witten'))
+         )),
         ("find refersto:refersto:author:maldacena",
          SpiresOp(Keyword('refersto'),
                   SpiresOp(Keyword('refersto'),
@@ -342,11 +357,19 @@ class TestParser(InvenioTestCase):
         ("find ea chowdhury, borun d",
          SpiresOp(Keyword('ea'), Value("chowdhury, borun d"))),
         ("(author:'Hiroshi Okada' OR (author:'H Okada' hep-ph) OR title: 'Dark matter in supersymmetric U(1(B-L) model' OR title: 'Non-Abelian discrete symmetry for flavors')",
-         OrOp(KeywordOp(Keyword('author'), SingleQuotedValue('Hiroshi Okada')),
-              OrOp(AndOp(KeywordOp(Keyword('author'), SingleQuotedValue('H Okada')),
-                         ValueQuery(Value('hep-ph'))),
-                   OrOp(KeywordOp(Keyword('title'), SingleQuotedValue('Dark matter in supersymmetric U(1(B-L) model')),
-                        KeywordOp(Keyword('title'), SingleQuotedValue('Non-Abelian discrete symmetry for flavors')))))),
+         OrOp(
+            OrOp(
+                OrOp(
+                    KeywordOp(Keyword('author'), SingleQuotedValue('Hiroshi Okada')),
+                    AndOp(
+                        KeywordOp(Keyword('author'), SingleQuotedValue('H Okada')),
+                        ValueQuery(Value('hep-ph'))
+                    )
+                ),
+                KeywordOp(Keyword('title'), SingleQuotedValue('Dark matter in supersymmetric U(1(B-L) model')),
+            ),
+            KeywordOp(Keyword('title'), SingleQuotedValue('Non-Abelian discrete symmetry for flavors'))
+         )),
         ("f a Oleg Antipin",
          SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
     )

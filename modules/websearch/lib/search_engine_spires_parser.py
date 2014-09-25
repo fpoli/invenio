@@ -426,8 +426,11 @@ NotQuery.grammar = [
         attr('op', Query),
     ),
 ]
-ParenthesizedQuery.grammar = omit(
-    Literal('('), _), attr('op', Query), omit(_, Literal(')'))
+ParenthesizedQuery.grammar = (
+    omit(Literal('('), _),
+    attr('op', Query),
+    omit(_, Literal(')')),
+)
 AndQuery.grammar = [
     (
         [
