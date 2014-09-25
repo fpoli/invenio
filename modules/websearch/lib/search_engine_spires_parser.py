@@ -31,12 +31,7 @@ from invenio.pluginutils import PluginContainer
 
 import invenio.search_engine_spires_ast as ast
 
-
-def generate_lexer(lg):
-    # lg.add(")", r"\)(?=\)*(\s|$))")
-    # re to match escapes
-    # r'"([^\"]|\\.)*([^\\]|\\)"'
-    pass
+SPIRES_KEYWORDS = ['a']
 
 
 # pylint: disable=C0321,R0903
@@ -104,6 +99,7 @@ class SingleQuotedString(LeafRule):
 
 
 class DoubleQuotedString(LeafRule):
+    # TODO: can be improved with r'"([^\"]|\\.)*([^\\]|\\)"'
     grammar = Literal('"'), attr('value', re.compile(r'[^"]*')), Literal('"')
 
 
