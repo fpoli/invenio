@@ -31,7 +31,105 @@ from invenio.pluginutils import PluginContainer
 
 import invenio.search_engine_spires_ast as ast
 
-SPIRES_KEYWORDS = ['a']
+SPIRES_KEYWORDS = [
+# address
+'address',
+# affiliation
+'affiliation', 'affil', 'aff', 'af', 'institution', 'inst',
+# any field
+'anyfield', 'any',
+# author count
+'authorcount', 'ac',
+# bulletin
+'bb', 'bbn', 'bull', 'bulletin-bd', 'bulletin-bd-no', 'eprint',
+# citation / reference
+'reference', 'c', 'citation', 'cited', 'jour-vol-page', 'jvp',
+# collaboration
+'collaboration', 'collab-name', 'cn',
+# conference number
+'confnumber', 'conf-number', 'cnum',
+# country
+'country', 'cc',
+# date
+'date', 'd',
+# date added
+'date-added', 'dadd', 'da',
+# date updated
+'date-updated', 'dupd', 'du',
+# first author
+'firstauthor', 'first-author', 'fa',
+# author
+'a', 'au', 'author', 'name',
+# exact author
+'exactauthor', 'exact-author', 'ea',
+# experiment
+'exp', 'experiment', 'expno', 'sd', 'se',
+# journal
+'journal', 'j', 'published_in', 'spicite', 'volume', 'vol',
+# journal page
+'journalpage', 'journal-page', 'jp',
+# journal year
+'journal-year', 'jy',
+# key
+'key', 'irn', 'record', 'document', 'documents',
+# keywords
+'keyword', 'k', 'keywords', 'kw',
+# note
+'note',
+# old title
+'old-title', 'old-t', 'ex-ti', 'et',
+#postal code
+'postalcode', 'zip',
+# ppf subject
+'ppf-subject', 'status',
+# recid
+'recid',
+# report number
+'r', 'rn', 'rept', 'report', 'report-num', 'reportnumber',
+# title
+'t', 'ti', 'title', 'with-language',
+# fulltext
+'fulltext', 'ft',
+# topic
+'topic', 'tp', 'hep-topic', 'desy-keyword', 'dk',
+# doi
+'doi',
+# topcite
+'cited', 'topcit', 'topcite',
+# captions
+'caption',
+# category
+'arx', 'category',
+# primarch
+'parx', 'primarch',
+# texkey
+'texkey',
+# type code
+'collection', 'tc', 'ty', 'type', 'type-code', 'scl', 'ps',
+# field code
+'f', 'fc', 'field', 'field-code', 'subject',
+# coden
+'journal', 'bc', 'browse-only-indx', 'coden', 'journal-coden',
+# jobs specific codes
+'title', 'job', 'position', 'region', 'continent', 'deadline', 'rank',
+# cataloguer
+'cataloguer', 'cat',
+# replace all the keywords without match with empty string
+# this will remove the noise from the unknown keywrds in the search
+# and will in all fields for the words following the keywords
+# energy
+'e', 'energy', 'energyrange-code',
+# exact experiment number
+'ee', 'exact-exp', 'exact-expno',
+# hidden note
+'hidden-note', 'hn',
+# ppf
+'ppf', 'ppflist',
+# slac topics
+'ppfa', 'slac-topics', 'special-topics', 'stp',
+# test index
+'test', 'testindex',
+]
 
 
 # pylint: disable=C0321,R0903
