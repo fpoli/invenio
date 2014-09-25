@@ -39,8 +39,6 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
 def generate_parser_test(query, expected):
     def func(self):
         tree = self.parser.parse_query(query)
-        converter = self.walkers['pypeg_to_ast_converter']()
-        tree = tree.accept(converter)
         printer = self.walkers['repr_printer']()
         print 'parsed tree  :', tree.accept(printer)
         print 'expected tree:', expected.accept(printer)
