@@ -351,6 +351,12 @@ class TestParser(InvenioTestCase):
         # Greater, Lower Ops
         ("find date > 1984",
          SpiresOp(Keyword('date'), GreaterOp(Value('1984')))),
+        ("find date after 1984",
+         SpiresOp(Keyword('date'), GreaterOp(Value('1984')))),
+        ("find date < 1984",
+         SpiresOp(Keyword('date'), LowerOp(Value('1984')))),
+        ("find date before 1984",
+         SpiresOp(Keyword('date'), LowerOp(Value('1984')))),
         ("find date >= 1984",
          SpiresOp(Keyword('date'), GreaterEqualOp(Value('1984')))),
         ("find date <= 2014-10-01",

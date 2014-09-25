@@ -34,10 +34,9 @@ import invenio.search_engine_spires_ast as ast
 
 def generate_lexer(lg):
     # lg.add(")", r"\)(?=\)*(\s|$))")
-    lg.add("AFTER", re.compile(r"\bafter\b", re.I))
-    lg.add("BEFORE", re.compile(r"\bbefore\b", re.I))
     # re to match escapes
     # r'"([^\"]|\\.)*([^\\]|\\)"'
+    pass
 
 
 # pylint: disable=C0321,R0903
@@ -59,6 +58,7 @@ class BinaryRule(ast.BinaryOp):
 
     def __init__(self):
         pass
+
 
 class ListRule(ast.ListOp):
 
@@ -290,7 +290,13 @@ class NestableKeyword(LeafRule):
 
 
 class GreaterQuery(UnaryRule):
-    grammar = omit(Literal('>'), _), attr('op', SpiresValue)
+    grammar = (
+        omit([
+            Literal('>'),
+            re.compile('after', re.I)
+        ], _),
+        attr('op', SpiresValue)
+    )
 
 
 class Number(LeafRule):
@@ -305,7 +311,13 @@ class GreaterEqualQuery(UnaryRule):
 
 
 class LowerQuery(UnaryRule):
-    grammar = omit(Literal('<'), _), attr('op', SpiresValue)
+    grammar = (
+        omit([
+            Literal('<'),
+            re.compile('before', re.I)
+        ], _),
+        attr('op', SpiresValue)
+    )
 
 
 class LowerEqualQuery(UnaryRule):
@@ -364,6 +376,7 @@ class Query(ListRule):
 
 class KeywordQuery(BinaryRule):
     pass
+
 
 KeywordQuery.grammar = [
     (
@@ -473,6 +486,7 @@ class FindQuery(UnaryRule):
 
 class EmptyQueryRule(LeafRule):
     grammar = attr('value', re.compile(r'\s*'))
+
 
 class Main(UnaryRule):
     grammar = [
