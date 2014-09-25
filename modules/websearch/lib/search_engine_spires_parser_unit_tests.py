@@ -267,6 +267,8 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('da'), Value('today - 2'))),
         ("find da 2012-01-01",
          SpiresOp(Keyword('da'), Value('2012-01-01'))),
+        ("find t quark andorinword",
+         SpiresOp(Keyword('t'), Value('quark andorinword'))),
 
         # Simple query with spaces
         ("find t quark   ",
@@ -281,6 +283,17 @@ class TestParser(InvenioTestCase):
          AndOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find t quark or a ellis",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
+        ("find (t aaa or t bbb or t ccc)or t ddd",
+         OrOp(
+            OrOp(
+                OrOp(
+                    SpiresOp(Keyword('t'), Value('aaa')),
+                    SpiresOp(Keyword('t'), Value('bbb'))
+                ),
+                SpiresOp(Keyword('t'), Value('ccc'))
+            ),
+            SpiresOp(Keyword('t'), Value('ddd'))
+         )),
         ("find a:richter and t quark",
          AndOp(SpiresOp(Keyword('a'), Value('richter')), SpiresOp(Keyword('t'), Value('quark')))),
         ("find (t quark) or (a ellis)",
