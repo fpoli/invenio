@@ -349,6 +349,12 @@ class TestParser(InvenioTestCase):
                         KeywordOp(Keyword('title'), SingleQuotedValue('Non-Abelian discrete symmetry for flavors')))))),
         ("f a Oleg Antipin",
          SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
+        ("FIND a Oleg Antipin",
+         SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
+        ("f a rodrigo,g and not rodrigo,j",
+         AndOp(SpiresOp(Keyword('a'), Value('rodrigo,g')),
+               NotOp(SpiresOp(Keyword('a'), Value('rodrigo,j'))))),
+
     )
 
 
