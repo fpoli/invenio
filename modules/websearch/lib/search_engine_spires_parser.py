@@ -282,7 +282,9 @@ SpiresQuery.grammar = attr('children', (
 
 
 class NestableKeyword(LeafRule):
-    grammar = attr('value', [re.compile('refersto', re.I), ])
+    grammar = attr('value', [
+        re.compile('refersto', re.I),
+    ])
 
 
 class GreaterQuery(UnaryRule):
@@ -338,7 +340,8 @@ SpiresSimpleQuery.grammar = [
             attr('right', [
                  SpiresParenthesizedQuery,
                  SpiresSimpleQuery,
-                 ValueQuery]),
+                 ValueQuery
+            ]),
         ),
         (
             attr('left', NestableKeyword),
@@ -346,7 +349,8 @@ SpiresSimpleQuery.grammar = [
             attr('right', [
                  SpiresParenthesizedQuery,
                  SpiresSimpleQuery,
-                 SpiresValueQuery]),
+                 SpiresValueQuery
+            ]),
         ),
         (
             attr('left', Word),
@@ -361,7 +365,8 @@ SpiresSimpleQuery.grammar = [
                 GreaterQuery,
                 LowerEqualQuery,
                 LowerQuery,
-                SpiresValue])
+                SpiresValue
+            ])
         ),
     ]
 

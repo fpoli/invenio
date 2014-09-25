@@ -341,6 +341,10 @@ class TestParser(InvenioTestCase):
         ("find refersto hep-th/9711200 and t nucl*",
          AndOp(SpiresOp(Keyword('refersto'), ValueQuery(Value("hep-th/9711200"))),
                SpiresOp(Keyword('t'), Value('nucl*')))),
+        ("find refersto:a ellis",
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
+        ("find refersto: a ellis",
+         SpiresOp(Keyword('refersto'), SpiresOp(Keyword('a'), Value('ellis')))),
 
         # Greater, Lower Ops
         ("find date > 1984",
