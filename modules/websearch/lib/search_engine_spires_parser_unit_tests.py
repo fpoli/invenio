@@ -253,8 +253,8 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('a'), Value('richter, b'))),
         ("find texkey Allison:1980vw",
          SpiresOp(Keyword('texkey'), Value('Allison:1980vw'))),
-        ("find aaa bbb:ccc ddd:eee",
-         SpiresOp(Keyword('aaa'), Value('bbb:ccc ddd:eee'))),
+        ("find title bbb:ccc ddd:eee",
+         SpiresOp(Keyword('title'), Value('bbb:ccc ddd:eee'))),
         ("find da today-2",
          SpiresOp(Keyword('da'), Value('today-2'))),
         ("find da today - 2",
@@ -311,6 +311,17 @@ class TestParser(InvenioTestCase):
             ),
             SpiresOp(Keyword('primarch'), Value('hep-ph'))
          )),
+        ("find a l everett or t light higgs and j phys.rev.lett. and monkey",
+         AndOp(
+            AndOp(
+                OrOp(
+                    SpiresOp(Keyword('a'), Value('l everett')),
+                    SpiresOp(Keyword('t'), Value('light higgs'))
+                ),
+                SpiresOp(Keyword('j'), Value('phys.rev.lett.'))
+            ),
+            ValueQuery(Value('monkey'))
+         )),
 
         # Nested searches
         ("find refersto a ellis",
@@ -322,7 +333,19 @@ class TestParser(InvenioTestCase):
         ("find refersto ellis, j",
          SpiresOp(Keyword('refersto'), ValueQuery(Value('ellis, j')))),
         ("find a parke, s j and refersto author witten",
-         AndOp(SpiresOp(Keyword('a'), Value("parke, s j")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('author'), Value('witten'))))),
+         AndOp(
+            SpiresOp(
+                Keyword('a'),
+                Value("parke, s j")
+            ),
+            SpiresOp(
+                Keyword('refersto'),
+                SpiresOp(
+                    Keyword('author'),
+                    Value('witten')
+                )
+            )
+         )),
         ("fin af oxford u. and refersto title muon*",
          AndOp(SpiresOp(Keyword('af'), Value("oxford u.")), SpiresOp(Keyword('refersto'), SpiresOp(Keyword('title'), Value('muon*'))))),
         ("find refersto a parke or refersto a lykken and a witten",
@@ -393,7 +416,7 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
         ("f a rodrigo,g and not rodrigo,j",
          AndOp(SpiresOp(Keyword('a'), Value('rodrigo,g')),
-               NotOp(SpiresOp(Keyword('a'), Value('rodrigo,j'))))),
+               NotOp(ValueQuery(Value('rodrigo,j'))))),
 
     )
 

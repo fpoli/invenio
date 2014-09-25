@@ -42,7 +42,11 @@ class PypegConverter(object):
     def visit(self, node, left, right):
         return ast.Or(left, right)
 
-    @visitor(parser.Word)
+    @visitor(parser.KeywordRule)
+    def visit(self, node):
+        return ast.Keyword(node.value)
+
+    @visitor(parser.SpiresKeywordRule)
     def visit(self, node):
         return ast.Keyword(node.value)
 
@@ -115,8 +119,8 @@ class PypegConverter(object):
         return ast.ValueQuery(child)
 
     @visitor(parser.SpiresSimpleQuery)
-    def visit(self, node, keyword, value):
-        return ast.SpiresOp(keyword, value)
+    def visit(self, node, child):
+        return child
 
     @visitor(parser.SpiresParenthesizedQuery)
     def visit(self, node, child):
@@ -137,6 +141,10 @@ class PypegConverter(object):
     @visitor(parser.ValueQuery)
     def visit(self, node, child):
         return ast.ValueQuery(child)
+
+    @visitor(parser.SpiresKeywordQuery)
+    def visit(self, node, keyword, value):
+        return ast.SpiresOp(keyword, value)
 
     @visitor(parser.KeywordQuery)
     def visit(self, node, keyword, value):
