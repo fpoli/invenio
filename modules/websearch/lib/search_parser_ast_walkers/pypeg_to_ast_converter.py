@@ -118,25 +118,21 @@ class PypegConverter(object):
     def visit(self, node, keyword, value):
         return ast.SpiresOp(keyword, value)
 
-    @visitor(parser.SpiresNotQuery)
-    def visit(self, node, child):
-        return ast.NotOp(child)
-
     @visitor(parser.SpiresParenthesizedQuery)
     def visit(self, node, child):
         return child
 
+    @visitor(parser.SpiresNotQuery)
+    def visit(self, node, child):
+        return ast.AndOp(None, ast.NotOp(child))
+
     @visitor(parser.SpiresAndQuery)
-    def visit(self, node, left, right):
-        return ast.AndOp(left, right)
+    def visit(self, node, child):
+        return ast.AndOp(None, child)
 
     @visitor(parser.SpiresOrQuery)
-    def visit(self, node, left, right):
-        return ast.OrOp(left, right)
-
-    @visitor(parser.SpiresQuery)
     def visit(self, node, child):
-        return child
+        return ast.OrOp(None, child)
 
     @visitor(parser.ValueQuery)
     def visit(self, node, child):
@@ -150,29 +146,41 @@ class PypegConverter(object):
     def visit(self, node, child):
         return child
 
-    @visitor(parser.NotQuery)
-    def visit(self, node, child):
-        return ast.NotOp(child)
-
     @visitor(parser.ParenthesizedQuery)
     def visit(self, node, child):
         return child
 
+    @visitor(parser.NotQuery)
+    def visit(self, node, child):
+        return ast.AndOp(None, ast.NotOp(child))
+
     @visitor(parser.AndQuery)
-    def visit(self, node, left, right):
-        return ast.AndOp(left, right)
+    def visit(self, node, child):
+        return ast.AndOp(None, child)
 
     @visitor(parser.ImplicitAndQuery)
-    def visit(self, node, left, right):
-        return ast.AndOp(left, right)
+    def visit(self, node, child):
+        return ast.AndOp(None, child)
 
     @visitor(parser.OrQuery)
-    def visit(self, node, left, right):
-        return ast.OrOp(left, right)
+    def visit(self, node, child):
+        return ast.OrOp(None, child)
 
     @visitor(parser.Query)
-    def visit(self, node, child):
-        return child
+    def visit(self, node, children):
+        tree = children[0]
+        for booleanNode in children[1:]:
+            booleanNode.left = tree
+            tree = booleanNode
+        return tree
+
+    @visitor(parser.SpiresQuery)
+    def visit(self, node, children):
+        tree = children[0]
+        for booleanNode in children[1:]:
+            booleanNode.left = tree
+            tree = booleanNode
+        return tree
 
     @visitor(parser.FindQuery)
     def visit(self, node, child):

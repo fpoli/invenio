@@ -34,17 +34,10 @@ import invenio.search_engine_spires_ast as ast
 
 def generate_lexer(lg):
     # lg.add(")", r"\)(?=\)*(\s|$))")
-    lg.add("<=", r"<=")
-    lg.add(">=", r">=")
-    lg.add(">", r">")
-    lg.add("<", r"<")
-    lg.add("+", r"\+")
     lg.add("AFTER", re.compile(r"\bafter\b", re.I))
     lg.add("BEFORE", re.compile(r"\bbefore\b", re.I))
     # re to match escapes
     # r'"([^\"]|\\.)*([^\\]|\\)"'
-    lg.add("*", r"\*")
-    lg.add("-", r"-")
 
 
 # pylint: disable=C0321,R0903
@@ -67,6 +60,11 @@ class BinaryRule(ast.BinaryOp):
     def __init__(self):
         pass
 
+class ListRule(ast.ListOp):
+
+    def __init__(self):
+        pass
+
 
 class Whitespace(LeafRule):
     grammar = attr('value', re.compile(r"\s+"))
@@ -76,15 +74,25 @@ _ = optional(Whitespace)
 
 
 class Not(object):
-    grammar = omit([re.compile(r"not", re.I), Literal('-')])
+    grammar = omit([
+        omit(re.compile(r"and\s+not", re.I)),
+        re.compile(r"not", re.I),
+        Literal('-'),
+    ])
 
 
 class And(object):
-    grammar = omit([re.compile(r"and", re.I), Literal('+')])
+    grammar = omit([
+        re.compile(r"and", re.I),
+        Literal('+'),
+    ])
 
 
 class Or(object):
-    grammar = omit([re.compile(r"or", re.I), Literal('|')])
+    grammar = omit([
+        re.compile(r"or", re.I),
+        Literal('|'),
+    ])
 
 
 class Word(LeafRule):
@@ -216,29 +224,65 @@ class SpiresSimpleQuery(BinaryRule):
     pass
 
 
-class SpiresNotQuery(UnaryRule):
+class SpiresQuery(ListRule):
     pass
 
 
 class SpiresParenthesizedQuery(UnaryRule):
-    pass
+    grammar = (
+        omit(Literal('('), _),
+        attr('op', SpiresQuery),
+        omit(_, Literal(')')),
+    )
 
 
-class SpiresAndQuery(BinaryRule):
-    pass
+class SpiresNotQuery(UnaryRule):
+    grammar = (
+            [
+                omit(re.compile(r"and\s+not", re.I)),
+                omit(re.compile(r"not", re.I)),
+            ],
+            [
+                (omit(Whitespace), attr('op', SpiresSimpleQuery)),
+                (omit(_), attr('op', SpiresParenthesizedQuery)),
+            ],
+    )
 
 
-class SpiresOrQuery(BinaryRule):
-    pass
+class SpiresAndQuery(UnaryRule):
+    grammar = (
+        omit(re.compile(r"and", re.I)),
+        [
+            (omit(Whitespace), attr('op', SpiresSimpleQuery)),
+            (omit(_), attr('op', SpiresParenthesizedQuery)),
+        ]
+    )
 
 
-class SpiresQuery(UnaryRule):
-    grammar = attr('op', [
-        SpiresNotQuery,
-        SpiresAndQuery,
-        SpiresOrQuery,
+class SpiresOrQuery(UnaryRule):
+    grammar = (
+        omit(re.compile(r"or", re.I)),
+        [
+            (omit(Whitespace), attr('op', SpiresSimpleQuery)),
+            (omit(_), attr('op', SpiresParenthesizedQuery)),
+        ]
+    )
+
+
+SpiresQuery.grammar = attr('children', (
+    [
         SpiresParenthesizedQuery,
-        SpiresSimpleQuery])
+        SpiresSimpleQuery,
+    ],
+    maybe_some((
+        omit(_),
+        [
+            SpiresNotQuery,
+            SpiresAndQuery,
+            SpiresOrQuery,
+        ]
+    )),
+))
 
 
 class NestableKeyword(LeafRule):
@@ -314,46 +358,7 @@ SpiresSimpleQuery.grammar = [
     ]
 
 
-SpiresNotQuery.grammar = (
-        omit(re.compile(r"not", re.I)),
-        [
-            (omit(Whitespace), attr('op', SpiresSimpleQuery)),
-            (omit(_), attr('op', SpiresParenthesizedQuery)),
-        ],
-)
-
-SpiresParenthesizedQuery.grammar = (
-    omit(Literal('('), _),
-    attr('op', SpiresQuery),
-    omit(_, Literal(')')),
-)
-
-SpiresAndQuery.grammar = (
-    [
-        (attr('left', SpiresParenthesizedQuery), omit(_)),
-        (attr('left', SpiresSimpleQuery), omit(Whitespace)),
-    ],
-    omit(re.compile(r"and", re.I)),
-    [
-        (omit(Whitespace), attr('right', SpiresQuery)),
-        (omit(_), attr('right', SpiresParenthesizedQuery)),
-    ]
-)
-
-SpiresOrQuery.grammar = (
-    [
-        (attr('left', SpiresParenthesizedQuery), omit(_)),
-        (attr('left', SpiresSimpleQuery), omit(Whitespace)),
-    ],
-    omit(re.compile(r"or", re.I)),
-    [
-        (omit(Whitespace), attr('right', SpiresQuery)),
-        (omit(_), attr('right', SpiresParenthesizedQuery)),
-    ]
-)
-
-
-class Query(UnaryRule):
+class Query(ListRule):
     pass
 
 
@@ -383,103 +388,83 @@ class SimpleQuery(UnaryRule):
     grammar = attr('op', [KeywordQuery, ValueQuery])
 
 
-class NotQuery(UnaryRule):
-    pass
-
-
 class ParenthesizedQuery(UnaryRule):
-    pass
-
-
-class AndQuery(BinaryRule):
-    pass
-
-
-class ImplicitAndQuery(BinaryRule):
-    pass
-
-
-class OrQuery(BinaryRule):
-    pass
-
-
-Query.grammar = attr('op', [
-    NotQuery,
-    AndQuery,
-    OrQuery,
-    ImplicitAndQuery,
-    ParenthesizedQuery,
-    SimpleQuery
-])
-
-
-NotQuery.grammar = [
-    (
-        omit(Not),
-        [
-            (omit(Whitespace), attr('op', Query)),
-            (omit(_), attr('op', ParenthesizedQuery)),
-        ],
-    ),
-    (
-        omit(Literal('-')),
+    grammar = (
+        omit(Literal('('), _),
         attr('op', Query),
-    ),
-]
-ParenthesizedQuery.grammar = (
-    omit(Literal('('), _),
-    attr('op', Query),
-    omit(_, Literal(')')),
-)
-AndQuery.grammar = [
-    (
-        [
-            (attr('left', ParenthesizedQuery), omit(_)),
-            (attr('left', SimpleQuery), omit(Whitespace)),
-        ],
-        omit(And),
-        [
-            (omit(Whitespace), attr('right', Query)),
-            (omit(_), attr('right', ParenthesizedQuery)),
-        ],
-    ),
-    (
-        [
-            (attr('left', ParenthesizedQuery), omit(_)),
-            (attr('left', SimpleQuery), omit(Whitespace)),
-        ],
-        omit(Literal('+')),
-        attr('right', Query),
-    ),
-]
-ImplicitAndQuery.grammar = (
+        omit(_, Literal(')')),
+    )
+
+
+class NotQuery(UnaryRule):
+    grammar = [
+        (
+            omit(Not),
+            [
+                (omit(Whitespace), attr('op', SimpleQuery)),
+                (omit(_), attr('op', ParenthesizedQuery)),
+            ],
+        ),
+        (
+            omit(Literal('-')),
+            attr('op', SimpleQuery),
+        ),
+    ]
+
+
+class AndQuery(UnaryRule):
+    grammar = [
+        (
+            omit(And),
+            [
+                (omit(Whitespace), attr('op', SimpleQuery)),
+                (omit(_), attr('op', ParenthesizedQuery)),
+            ],
+        ),
+        (
+            omit(Literal('+')),
+            attr('op', SimpleQuery),
+        ),
+    ]
+
+
+class ImplicitAndQuery(UnaryRule):
+    grammar = [
+        attr('op', ParenthesizedQuery),
+        attr('op', SimpleQuery),
+    ]
+
+
+class OrQuery(UnaryRule):
+    grammar = [
+        (
+            omit(Or),
+            [
+                (omit(Whitespace), attr('op', SimpleQuery)),
+                (omit(_), attr('op', ParenthesizedQuery)),
+            ],
+        ),
+        (
+            omit(Literal('|')),
+            attr('op', SimpleQuery),
+        ),
+    ]
+
+
+Query.grammar = attr('children', (
     [
-        attr('left', ParenthesizedQuery),
-        (attr('left', SimpleQuery), omit(Whitespace)),
+        ParenthesizedQuery,
+        SimpleQuery,
     ],
-    attr('right', Query),
-)
-OrQuery.grammar = [
-    (
+    maybe_some((
+        omit(_),
         [
-            (attr('left', ParenthesizedQuery), omit(_)),
-            (attr('left', SimpleQuery), omit(Whitespace)),
-        ],
-        omit(Or),
-        [
-            (omit(Whitespace), attr('right', Query)),
-            (omit(_), attr('right', ParenthesizedQuery)),
-        ],
-    ),
-    (
-        [
-            (attr('left', ParenthesizedQuery), omit(_)),
-            (attr('left', SimpleQuery), omit(Whitespace)),
-        ],
-        omit(Literal('|')),
-        attr('right', Query),
-    ),
-]
+        NotQuery,
+        AndQuery,
+        OrQuery,
+        ImplicitAndQuery,
+    ])),
+))
 
 
 class FindQuery(UnaryRule):
