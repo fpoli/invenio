@@ -23,7 +23,7 @@ from invenio.testutils import (make_test_suite,
                                run_test_suite,
                                InvenioTestCase,
                                nottest)
-from invenio.search_engine_spires_parser import (parse_query,
+from invenio.search_engine_spires_parser import (SpiresToInvenioSyntaxConverter,
                                                  load_walkers)
 from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
                                               NotOp, Keyword, Value,
@@ -38,7 +38,7 @@ from invenio.search_engine_spires_ast import (AndOp, KeywordOp, OrOp,
 @nottest
 def generate_parser_test(query, expected):
     def func(self):
-        tree = parse_query(query)
+        tree = self.parser.parse_query(query)
         converter = self.walkers['pypeg_to_ast_converter']()
         tree = tree.accept(converter)
         printer = self.walkers['repr_printer']()
@@ -356,6 +356,7 @@ class TestParser(InvenioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.walkers = load_walkers()
+        cls.parser = SpiresToInvenioSyntaxConverter()
 
 
 TEST_SUITE = make_test_suite(TestParser)
