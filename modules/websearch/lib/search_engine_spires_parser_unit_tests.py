@@ -300,6 +300,23 @@ class TestParser(InvenioTestCase):
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
         ("find (( t quark )or( a:ellis ))",
          OrOp(SpiresOp(Keyword('t'), Value('quark')), SpiresOp(Keyword('a'), Value('ellis')))),
+
+        # Implicit keyword
+        ("find a john and ellis",
+         AndOp(SpiresOp(Keyword('a'), Value('john')),
+               SpiresOp(Keyword('a'), Value('ellis')))),
+        ("find a john and (ellis or albert)",
+         AndOp(SpiresOp(Keyword('a'), Value('john')),
+               OrOp(ValueQuery(Value('ellis')),
+                    ValueQuery(Value('albert'))))),
+        ("find a john and t quark or higgs",
+         OrOp(AndOp(SpiresOp(Keyword('a'), Value('john')),
+                     SpiresOp(Keyword('t'), Value('quark'))),
+               SpiresOp(Keyword('t'), Value('higgs')))),
+        ("find john and t quark or higgs",
+         OrOp(AndOp(ValueQuery(Value('john')),
+                    SpiresOp(Keyword('t'), Value('quark'))),
+              SpiresOp(Keyword('t'), Value('higgs')))),
         ("find a l everett or t light higgs and j phys.rev.lett. and primarch hep-ph",
          AndOp(
             AndOp(
@@ -320,7 +337,7 @@ class TestParser(InvenioTestCase):
                 ),
                 SpiresOp(Keyword('j'), Value('phys.rev.lett.'))
             ),
-            ValueQuery(Value('monkey'))
+            SpiresOp(Keyword('j'), Value('monkey'))
          )),
 
         # Nested searches
@@ -416,7 +433,7 @@ class TestParser(InvenioTestCase):
          SpiresOp(Keyword('a'), Value('Oleg Antipin'))),
         ("f a rodrigo,g and not rodrigo,j",
          AndOp(SpiresOp(Keyword('a'), Value('rodrigo,g')),
-               NotOp(ValueQuery(Value('rodrigo,j'))))),
+               NotOp(SpiresOp(Keyword('a'), Value('rodrigo,j'))))),
 
     )
 

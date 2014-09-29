@@ -176,6 +176,8 @@ class PypegConverter(object):
 
     @visitor(parser.Query)
     def visit(self, node, children):
+        # Build the boolean expression, left to right
+        # x and y or z and ... --> ((x and y) or z) and ...
         tree = children[0]
         for booleanNode in children[1:]:
             booleanNode.left = tree
@@ -184,6 +186,42 @@ class PypegConverter(object):
 
     @visitor(parser.SpiresQuery)
     def visit(self, node, children):
+        # Assign implicit keyword
+        # find author x and y --> find author x and author y
+        def get_keyword(node):
+            if type(child) == ast.SpiresOp:
+                return child.left
+            if type(child) in [ast.AndOp, ast.OrOp] and \
+               type(child.right) == ast.SpiresOp:
+                return child.right.left
+            if type(child) in [ast.NotOp] and \
+               type(child.op) == ast.SpiresOp:
+                return child.op.left
+            return None
+        def assign_implicit_keyword(implicit_keyword, node):
+            """
+            Note: this function has side effects on node content
+            """
+            if type(node) in [ast.AndOp, ast.OrOp] and \
+               type(node.right) == ast.ValueQuery:
+                node.right = ast.SpiresOp(implicit_keyword, node.right.op)
+            if type(node) in [ast.AndOp, ast.OrOp] and \
+               type(node.right) == ast.NotOp:
+                assign_implicit_keyword(implicit_keyword, node.right)
+            if type(node) in [ast.NotOp] and \
+               type(node.op) == ast.ValueQuery:
+                node.op = ast.SpiresOp(implicit_keyword, node.op.op)
+
+        implicit_keyword = None
+        for child in children:
+            new_keyword = get_keyword(child)
+            if new_keyword is not None:
+                implicit_keyword = new_keyword
+            if implicit_keyword is not None:
+                assign_implicit_keyword(implicit_keyword, child)
+
+        # Build the boolean expression, left to right
+        # x and y or z and ... --> ((x and y) or z) and ...
         tree = children[0]
         for booleanNode in children[1:]:
             booleanNode.left = tree
